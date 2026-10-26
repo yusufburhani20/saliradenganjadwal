@@ -71,6 +71,22 @@ Route::middleware('auth')->group(function () {
         Route::get('/lesson-hours', [\App\Http\Controllers\Admin\LessonHourController::class, 'index'])->name('lesson-hours.index');
         Route::post('/lesson-hours', [\App\Http\Controllers\Admin\LessonHourController::class, 'update'])->name('lesson-hours.update');
 
+        // Schedules (Manual CRUD)
+        Route::get('/schedules', [\App\Http\Controllers\Admin\ScheduleController::class, 'index'])->name('schedules.index');
+        Route::post('/schedules', [\App\Http\Controllers\Admin\ScheduleController::class, 'store'])->name('schedules.store');
+        Route::put('/schedules/{schedule}', [\App\Http\Controllers\Admin\ScheduleController::class, 'update'])->name('schedules.update');
+        Route::delete('/schedules/{schedule}', [\App\Http\Controllers\Admin\ScheduleController::class, 'destroy'])->name('schedules.destroy');
+
+        // Automatic Schedule Generator
+        Route::get('/schedule-generator', [\App\Http\Controllers\Admin\ScheduleGeneratorController::class, 'index'])->name('schedule-generator.index');
+        Route::post('/schedule-generator/assignments', [\App\Http\Controllers\Admin\ScheduleGeneratorController::class, 'storeAssignment'])->name('schedule-generator.assignments.store');
+        Route::delete('/schedule-generator/assignments/{assignment}', [\App\Http\Controllers\Admin\ScheduleGeneratorController::class, 'destroyAssignment'])->name('schedule-generator.assignments.destroy');
+        Route::post('/schedule-generator/auto-populate', [\App\Http\Controllers\Admin\ScheduleGeneratorController::class, 'autoPopulateFromClasses'])->name('schedule-generator.auto-populate');
+        Route::post('/schedule-generator/unavailabilities', [\App\Http\Controllers\Admin\ScheduleGeneratorController::class, 'storeUnavailability'])->name('schedule-generator.unavailabilities.store');
+        Route::delete('/schedule-generator/unavailabilities/{unavailability}', [\App\Http\Controllers\Admin\ScheduleGeneratorController::class, 'destroyUnavailability'])->name('schedule-generator.unavailabilities.destroy');
+        Route::post('/schedule-generator/generate', [\App\Http\Controllers\Admin\ScheduleGeneratorController::class, 'runGenerate'])->name('schedule-generator.generate');
+        Route::post('/schedule-generator/apply', [\App\Http\Controllers\Admin\ScheduleGeneratorController::class, 'applySchedules'])->name('schedule-generator.apply');
+
         // Inventory Management
         Route::prefix('inventory')->name('inventory.')->group(function () {
             Route::get('/', [\App\Http\Controllers\Admin\InventoryController::class, 'index'])->name('index');
