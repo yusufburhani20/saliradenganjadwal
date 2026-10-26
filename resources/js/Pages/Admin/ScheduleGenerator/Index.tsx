@@ -145,6 +145,7 @@ export default function ScheduleGeneratorIndex({
         placed_count: number;
         total_count: number;
         unplaced: any[];
+        capacity_warnings?: string[];
         stats?: { steps: number; efficiency: string };
     } | null>(null);
 
@@ -509,11 +510,18 @@ export default function ScheduleGeneratorIndex({
                                         </div>
                                     </div>
 
-                                    {generationResult.unplaced.length > 0 && (
-                                        <div className="text-xs bg-amber-500/20 border border-amber-400/40 rounded-xl px-3 py-2 text-amber-200">
-                                            Perhatian: Ada {generationResult.unplaced.length} sesi yang kekurangan slot jam kosong.
-                                        </div>
-                                    )}
+                                    <div className="flex flex-col sm:flex-row gap-2">
+                                        {generationResult.unplaced.length > 0 && (
+                                            <div className="text-xs bg-amber-500/20 border border-amber-400/40 rounded-xl px-3 py-2 text-amber-200">
+                                                Perhatian: Ada {generationResult.unplaced.length} sesi yang belum dapat slot jam.
+                                            </div>
+                                        )}
+                                        {generationResult.capacity_warnings && generationResult.capacity_warnings.length > 0 && (
+                                            <div className="text-xs bg-rose-500/20 border border-rose-400/40 rounded-xl px-3 py-2 text-rose-200">
+                                                {generationResult.capacity_warnings[0]}
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             )}
                         </div>

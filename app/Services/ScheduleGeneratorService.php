@@ -77,14 +77,34 @@ class ScheduleGeneratorService
             ];
         }
 
-        // 4. Urutkan sesi: sesi dengan batasan hari khusus (misal Sabtu/Minggu saja) diletakkan pertama kali,
+        // 4. Hitung kapasitas mingguan dan peringatan beban berlebih
+        $maxWeeklyHours = 0;
+        foreach ($this->lessonHoursByDay as $d => $slots) {
+            $maxWeeklyHours += count($slots);
+        }
+
+        $teacherHours = [];
+        $teacherNames = [];
+        foreach ($assignments as $a) {
+            $teacherHours[$a->teacher_id] = ($teacherHours[$a->teacher_id] ?? 0) + $a->total_hours;
+            $teacherNames[$a->teacher_id] = $a->teacher ? $a->teacher->name : "Guru #{$a->teacher_id}";
+        }
+
+        $capacityWarnings = [];
+        foreach ($teacherHours as $tId => $hours) {
+            if ($hours > $maxWeeklyHours) {
+                $capacityWarnings[] = "Guru {$teacherNames[$tId]} dibebani {$hours} JP/minggu, melebihi jam operasional sekolah ({$maxWeeklyHours} JP/minggu).";
+            }
+        }
+
+        // Urutkan sesi: sesi dengan batasan hari khusus diletakkan pertama kali,
         // lalu durasi terbesar & guru dengan jam terpadat (MRV heuristic)
         usort($sessions, function ($a, $b) {
             $aDaysCount = !empty($a['allowed_days']) ? count($a['allowed_days']) : 99;
             $bDaysCount = !empty($b['allowed_days']) ? count($b['allowed_days']) : 99;
 
             if ($aDaysCount !== $bDaysCount) {
-                return $aDaysCount <=> $bDaysCount; // Yang pilihannya lebih sedikit (lebih ketat) diprioritaskan
+                return $aDaysCount <=> $bDaysCount;
             }
             if ($b['duration'] !== $a['duration']) {
                 return $b['duration'] <=> $a['duration'];
@@ -92,28 +112,65 @@ class ScheduleGeneratorService
             return $b['teacher_load'] <=> $a['teacher_load'];
         });
 
-        // 5. Struktur penampung jadwal (Timetable Grid)
-        // classGrid[class_id][day][slot_index] = session_id
-        // teacherGrid[teacher_id][day][slot_index] = session_id
+        // 5a. Tahap 1: Greedy Best-Fit Pass (Sangat cepat dan andal untuk beban tinggi)
+        $greedyClassGrid = [];
+        $greedyTeacherGrid = [];
+        $greedyPlaced = [];
+
+        foreach ($sessions as $session) {
+            $candidateSlots = $this->getCandidateSlotsForSession($session, $greedyClassGrid, $greedyTeacherGrid);
+            if (!empty($candidateSlots)) {
+                $bestSlot = $candidateSlots[0];
+                $day = $bestSlot['day'];
+                $startSlot = $bestSlot['start_slot'];
+                $duration = $session['duration'];
+
+                for ($i = 0; $i < $duration; $i++) {
+                    $greedyClassGrid[$session['class_id']][$day][$startSlot + $i] = $session['id'];
+                    $greedyTeacherGrid[$session['teacher_id']][$day][$startSlot + $i] = $session['id'];
+                }
+
+                $greedyPlaced[] = [
+                    'session_id' => $session['id'],
+                    'class_id' => $session['class_id'],
+                    'class_name' => $session['class_name'],
+                    'teacher_id' => $session['teacher_id'],
+                    'teacher_name' => $session['teacher_name'],
+                    'subject_id' => $session['subject_id'],
+                    'subject_name' => $session['subject_name'],
+                    'day' => $day,
+                    'start_slot' => $startSlot,
+                    'end_slot' => $startSlot + $duration - 1,
+                    'duration' => $duration,
+                ];
+            }
+        }
+
+        // 5b. Tahap 2: Backtracking Solver
         $classGrid = [];
         $teacherGrid = [];
         $placedSessions = [];
-
         $steps = 0;
-        $bestPlaced = [];
+        $bestPlaced = $greedyPlaced; // Gunakan greedy sebagai baseline awal
 
-        $success = $this->backtrack(
-            $sessions,
-            0,
-            $classGrid,
-            $teacherGrid,
-            $placedSessions,
-            $steps,
-            $maxAttempts,
-            $bestPlaced
-        );
+        if (count($greedyPlaced) === $totalSessions) {
+            $finalPlaced = $greedyPlaced;
+            $success = true;
+            $steps = $totalSessions;
+        } else {
+            $success = $this->backtrack(
+                $sessions,
+                0,
+                $classGrid,
+                $teacherGrid,
+                $placedSessions,
+                $steps,
+                $maxAttempts,
+                $bestPlaced
+            );
+            $finalPlaced = $success ? $placedSessions : $bestPlaced;
+        }
 
-        $finalPlaced = $success ? $placedSessions : $bestPlaced;
         $unplaced = [];
         $placedIds = array_column($finalPlaced, 'session_id');
 
@@ -131,13 +188,22 @@ class ScheduleGeneratorService
         // 6. Transformasi ke format objek Schedule (siap simpan atau preview)
         $formattedSchedules = $this->formatPlacedSchedules($finalPlaced);
 
+        $message = $success && empty($unplaced)
+            ? 'Jadwal berhasil digenerate 100% tanpa bentrok!'
+            : 'Jadwal berhasil digenerate dengan penempatan maksimal (' . count($finalPlaced) . ' dari ' . $totalSessions . ' sesi).';
+
+        if (!empty($capacityWarnings)) {
+            $message .= ' Perhatian: ' . implode(' ', $capacityWarnings);
+        }
+
         return [
             'success' => $success && empty($unplaced),
-            'message' => $success ? 'Jadwal berhasil digenerate 100% tanpa bentrok!' : 'Jadwal berhasil digenerate dengan penempatan maksimal.',
+            'message' => $message,
             'schedules' => $formattedSchedules,
             'placed_count' => count($finalPlaced),
             'total_count' => $totalSessions,
             'unplaced' => $unplaced,
+            'capacity_warnings' => $capacityWarnings,
             'stats' => [
                 'steps' => $steps,
                 'efficiency' => round((count($finalPlaced) / $totalSessions) * 100, 1) . '%',
