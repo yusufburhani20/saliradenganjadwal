@@ -17,6 +17,8 @@ import {
     XMarkIcon,
     FunnelIcon,
     CheckBadgeIcon,
+    PencilSquareIcon,
+    UserGroupIcon,
 } from '@heroicons/react/24/outline';
 
 interface AcademicClass {
@@ -130,6 +132,7 @@ export default function ScheduleGeneratorIndex({
 
     // Modals
     const [showAssignmentModal, setShowAssignmentModal] = useState(false);
+    const [showBatchAssignModal, setShowBatchAssignModal] = useState(false);
     const [showUnavailabilityModal, setShowUnavailabilityModal] = useState(false);
     const [showApplyModal, setShowApplyModal] = useState(false);
 
@@ -160,6 +163,12 @@ export default function ScheduleGeneratorIndex({
         allowed_days: [] as string[],
     });
 
+    // Batch Assign Form (Atur Guru Per Mapel Sekaligus)
+    const batchForm = useForm({
+        subject_id: subjects[0]?.id || '',
+        teacher_id: teachers[0]?.id || '',
+    });
+
     // Unavailability Form
     const unavailabilityForm = useForm({
         teacher_id: teachers[0]?.id || '',
@@ -178,6 +187,31 @@ export default function ScheduleGeneratorIndex({
         });
     };
 
+    const handleEditAssignment = (assignment: TeachingAssignment) => {
+        assignmentForm.setData({
+            academic_class_id: assignment.academic_class_id,
+            subject_id: assignment.subject_id,
+            teacher_id: assignment.teacher_id,
+            total_hours: assignment.total_hours,
+            max_hours_per_day: assignment.max_hours_per_day,
+            allowed_days: assignment.allowed_days || [],
+        });
+        setShowAssignmentModal(true);
+    };
+
+    const handleQuickChangeTeacher = (assignment: TeachingAssignment, newTeacherId: number) => {
+        router.post(route('admin.schedule-generator.assignments.store'), {
+            academic_class_id: assignment.academic_class_id,
+            subject_id: assignment.subject_id,
+            teacher_id: newTeacherId,
+            total_hours: assignment.total_hours,
+            max_hours_per_day: assignment.max_hours_per_day,
+            allowed_days: assignment.allowed_days || [],
+        }, {
+            preserveScroll: true,
+        });
+    };
+
     const handleDeleteAssignment = (id: number) => {
         if (confirm('Apakah Anda yakin ingin menghapus alokasi jam mengajar ini?')) {
             router.delete(route('admin.schedule-generator.assignments.destroy', id));
@@ -188,6 +222,27 @@ export default function ScheduleGeneratorIndex({
         if (confirm('Sistem akan membuat alokasi otomatis berdasarkan daftar mata pelajaran yang terhubung ke setiap kelas. Lanjutkan?')) {
             router.post(route('admin.schedule-generator.auto-populate'));
         }
+    };
+
+    const handleReassignEvenly = () => {
+        if (confirm('Bagi rata mata pelajaran ke seluruh guru yang terdaftar secara merata (round-robin)? Semua kelas akan diperbarui guru pengampunya.')) {
+            router.post(route('admin.schedule-generator.auto-populate'), { reassign_teachers: true });
+        }
+    };
+
+    const handleClearAllAssignments = () => {
+        if (confirm('Kosongkan semua alokasi mengajar saat ini? Data yang terhapus bisa diisi kembali dengan tombol Isi Otomatis.')) {
+            router.post(route('admin.schedule-generator.clear'));
+        }
+    };
+
+    const handleBatchAssignSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        batchForm.post(route('admin.schedule-generator.batch-assign'), {
+            onSuccess: () => {
+                setShowBatchAssignModal(false);
+            },
+        });
     };
 
     const handleSaveUnavailability = (e: React.FormEvent) => {
@@ -602,16 +657,42 @@ export default function ScheduleGeneratorIndex({
                                 <p className="text-xs text-slate-500 mt-0.5">Daftar beban jam pelajaran tiap guru dan mata pelajaran per rombel kelas</p>
                             </div>
 
-                            <div className="flex items-center gap-2">
+                            <div className="flex flex-wrap items-center gap-2">
                                 <button
-                                    onClick={handleAutoPopulate}
-                                    className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 transition"
+                                    onClick={handleReassignEvenly}
+                                    className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 dark:hover:bg-indigo-900/50 transition border border-indigo-200/60 dark:border-indigo-800/60 shadow-xs"
+                                    title="Membagi mata pelajaran secara seimbang ke seluruh guru"
                                 >
-                                    <ArrowPathIcon className="w-3.5 h-3.5" />
-                                    Isi Otomatis dari Mapel Kelas
+                                    <SparklesIcon className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                                    Bagi Guru Merata (Otomatis)
                                 </button>
                                 <button
-                                    onClick={() => setShowAssignmentModal(true)}
+                                    onClick={() => setShowBatchAssignModal(true)}
+                                    className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition shadow-xs"
+                                    title="Tetapkan 1 guru untuk 1 mata pelajaran di semua kelas sekaligus"
+                                >
+                                    <UserGroupIcon className="w-3.5 h-3.5" />
+                                    Atur Guru Per Mapel
+                                </button>
+                                <button
+                                    onClick={handleAutoPopulate}
+                                    className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition shadow-xs"
+                                >
+                                    <ArrowPathIcon className="w-3.5 h-3.5" />
+                                    Isi Otomatis
+                                </button>
+                                <button
+                                    onClick={handleClearAllAssignments}
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-2 text-xs font-medium rounded-xl text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition"
+                                    title="Kosongkan seluruh alokasi"
+                                >
+                                    <TrashIcon className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        assignmentForm.reset();
+                                        setShowAssignmentModal(true);
+                                    }}
                                     className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition"
                                 >
                                     <PlusIcon className="w-4 h-4" />
@@ -697,8 +778,19 @@ export default function ScheduleGeneratorIndex({
                                                         </div>
                                                     )}
                                                 </td>
-                                                <td className="py-3 px-4 text-slate-600 dark:text-slate-400 font-medium">
-                                                    {a.teacher?.name}
+                                                <td className="py-2.5 px-4 text-slate-600 dark:text-slate-400 font-medium min-w-[200px]">
+                                                    <select
+                                                        value={a.teacher_id}
+                                                        onChange={(e) => handleQuickChangeTeacher(a, Number(e.target.value))}
+                                                        className="w-full text-xs font-semibold rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 py-1.5 px-2.5 focus:ring-2 focus:ring-indigo-500 shadow-xs transition"
+                                                        title="Klik untuk langsung ganti guru pengampu"
+                                                    >
+                                                        {teachers.map((t) => (
+                                                            <option key={t.id} value={t.id}>
+                                                                {t.name}
+                                                            </option>
+                                                        ))}
+                                                    </select>
                                                 </td>
                                                 <td className="py-3 px-4 text-center">
                                                     <span className="inline-block px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-400">
@@ -708,14 +800,23 @@ export default function ScheduleGeneratorIndex({
                                                 <td className="py-3 px-4 text-center text-slate-500">
                                                     {a.max_hours_per_day} JP / sesi
                                                 </td>
-                                                <td className="py-3 px-4 text-right">
-                                                    <button
-                                                        onClick={() => handleDeleteAssignment(a.id)}
-                                                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition"
-                                                        title="Hapus Alokasi"
-                                                    >
-                                                        <TrashIcon className="w-4 h-4" />
-                                                    </button>
+                                                <td className="py-3 px-4 text-right whitespace-nowrap">
+                                                    <div className="flex items-center justify-end gap-1">
+                                                        <button
+                                                            onClick={() => handleEditAssignment(a)}
+                                                            className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-lg transition"
+                                                            title="Edit Detail & Batasan Hari"
+                                                        >
+                                                            <PencilSquareIcon className="w-4 h-4" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDeleteAssignment(a.id)}
+                                                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition"
+                                                            title="Hapus Alokasi"
+                                                        >
+                                                            <TrashIcon className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))
@@ -1069,6 +1170,73 @@ export default function ScheduleGeneratorIndex({
                                 {isApplying ? 'Menerapkan...' : 'Ya, Terapkan Sekarang'}
                             </button>
                         </div>
+                    </div>
+                </div>
+            {/* MODAL: ATUR GURU PER MAPEL (MASAL) */}
+            {showBatchAssignModal && (
+                <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
+                        <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                            <h3 className="font-bold text-base text-slate-800 dark:text-slate-100">Atur Guru Pengampu Masal</h3>
+                            <button onClick={() => setShowBatchAssignModal(false)} className="text-slate-400 hover:text-slate-600">
+                                <XMarkIcon className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <p className="text-xs text-slate-500 leading-relaxed">
+                            Pilih mata pelajaran dan guru pengampu. Tindakan ini akan <strong>menetapkan guru ini untuk mata pelajaran tersebut di seluruh kelas</strong> secara instan.
+                        </p>
+
+                        <form onSubmit={handleBatchAssignSubmit} className="space-y-4 text-xs">
+                            <div>
+                                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Mata Pelajaran Target</label>
+                                <select
+                                    value={batchForm.data.subject_id}
+                                    onChange={(e) => batchForm.setData('subject_id', Number(e.target.value))}
+                                    className="w-full rounded-xl border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 py-2 font-medium"
+                                    required
+                                >
+                                    {subjects.map((s) => (
+                                        <option key={s.id} value={s.id}>
+                                            {s.name} {s.code ? `(${s.code})` : ''}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Guru yang Ditetapkan</label>
+                                <select
+                                    value={batchForm.data.teacher_id}
+                                    onChange={(e) => batchForm.setData('teacher_id', Number(e.target.value))}
+                                    className="w-full rounded-xl border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 py-2 font-medium"
+                                    required
+                                >
+                                    {teachers.map((t) => (
+                                        <option key={t.id} value={t.id}>
+                                            {t.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="flex justify-end gap-2 pt-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowBatchAssignModal(false)}
+                                    className="px-4 py-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                                >
+                                    Batal
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={batchForm.processing}
+                                    className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition shadow-sm"
+                                >
+                                    Terapkan ke Semua Kelas
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}

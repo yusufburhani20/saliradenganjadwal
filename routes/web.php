@@ -82,6 +82,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/schedule-generator/assignments', [\App\Http\Controllers\Admin\ScheduleGeneratorController::class, 'storeAssignment'])->name('schedule-generator.assignments.store');
         Route::delete('/schedule-generator/assignments/{assignment}', [\App\Http\Controllers\Admin\ScheduleGeneratorController::class, 'destroyAssignment'])->name('schedule-generator.assignments.destroy');
         Route::post('/schedule-generator/auto-populate', [\App\Http\Controllers\Admin\ScheduleGeneratorController::class, 'autoPopulateFromClasses'])->name('schedule-generator.auto-populate');
+        Route::post('/schedule-generator/batch-assign', [\App\Http\Controllers\Admin\ScheduleGeneratorController::class, 'batchAssignTeacher'])->name('schedule-generator.batch-assign');
+        Route::post('/schedule-generator/clear', [\App\Http\Controllers\Admin\ScheduleGeneratorController::class, 'clearAssignments'])->name('schedule-generator.clear');
         Route::post('/schedule-generator/unavailabilities', [\App\Http\Controllers\Admin\ScheduleGeneratorController::class, 'storeUnavailability'])->name('schedule-generator.unavailabilities.store');
         Route::delete('/schedule-generator/unavailabilities/{unavailability}', [\App\Http\Controllers\Admin\ScheduleGeneratorController::class, 'destroyUnavailability'])->name('schedule-generator.unavailabilities.destroy');
         Route::post('/schedule-generator/generate', [\App\Http\Controllers\Admin\ScheduleGeneratorController::class, 'runGenerate'])->name('schedule-generator.generate');

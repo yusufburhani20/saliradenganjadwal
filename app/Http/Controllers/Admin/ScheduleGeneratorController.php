@@ -89,36 +89,72 @@ class ScheduleGeneratorController extends Controller
         return back()->with('success', 'Alokasi mengajar berhasil dihapus.');
     }
 
-    public function autoPopulateFromClasses()
+    public function autoPopulateFromClasses(Request $request)
     {
         $classes = AcademicClass::with('subjects')->get();
-        $defaultTeacher = User::whereHas('roles', fn($q) => $q->whereIn('name', ['Guru', 'Super Admin', 'Wali Kelas', 'Kepala Program', 'Kepala Sekolah']))->first();
+        $teachers = User::whereHas('roles', fn($q) => $q->whereIn('name', ['Guru', 'Super Admin', 'Wali Kelas', 'Kepala Program', 'Kepala Sekolah']))->get();
 
-        if (!$defaultTeacher) {
+        if ($teachers->isEmpty()) {
             return back()->with('error', 'Tidak ditemukan data guru aktif di sistem.');
+        }
+
+        // Petakan tiap mapel ke guru yang berbeda secara merata (round-robin by subject)
+        $subjectTeacherMap = [];
+        $teacherIndex = 0;
+        $allSubjects = Subject::orderBy('id')->get();
+        foreach ($allSubjects as $sub) {
+            $subjectTeacherMap[$sub->id] = $teachers[$teacherIndex % $teachers->count()]->id;
+            $teacherIndex++;
         }
 
         $count = 0;
         foreach ($classes as $class) {
             foreach ($class->subjects as $subject) {
-                $exists = TeachingAssignment::where('academic_class_id', $class->id)
-                    ->where('subject_id', $subject->id)
-                    ->exists();
+                $assignedTeacherId = $subjectTeacherMap[$subject->id] ?? $teachers[0]->id;
 
-                if (!$exists) {
+                $assignment = TeachingAssignment::where('academic_class_id', $class->id)
+                    ->where('subject_id', $subject->id)
+                    ->first();
+
+                if (!$assignment) {
                     TeachingAssignment::create([
                         'academic_class_id' => $class->id,
                         'subject_id' => $subject->id,
-                        'teacher_id' => $defaultTeacher->id,
+                        'teacher_id' => $assignedTeacherId,
                         'total_hours' => 2,
                         'max_hours_per_day' => 2,
+                    ]);
+                    $count++;
+                } else if ($request->boolean('reassign_teachers')) {
+                    // Jika diminta reset pembagian guru secara merata
+                    $assignment->update([
+                        'teacher_id' => $assignedTeacherId,
                     ]);
                     $count++;
                 }
             }
         }
 
-        return back()->with('success', "Berhasil membuat {$count} alokasi awal dari daftar mata pelajaran kelas.");
+        return back()->with('success', "Berhasil memetakan {$count} alokasi dengan pembagian guru secara merata.");
+    }
+
+    public function batchAssignTeacher(Request $request)
+    {
+        $request->validate([
+            'subject_id' => 'required|exists:subjects,id',
+            'teacher_id' => 'required|exists:users,id',
+        ]);
+
+        $updated = TeachingAssignment::where('subject_id', $request->subject_id)
+            ->update(['teacher_id' => $request->teacher_id]);
+
+        return back()->with('success', "Berhasil menetapkan guru pengampu untuk {$updated} kelas.");
+    }
+
+    public function clearAssignments()
+    {
+        TeachingAssignment::truncate();
+        return back()->with('success', 'Seluruh data alokasi mengajar berhasil dikosongkan.');
     }
 
     public function storeUnavailability(Request $request)
