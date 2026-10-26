@@ -34,7 +34,7 @@ class ScheduleGeneratorController extends Controller
 
         $unavailabilities = TeacherUnavailability::with('teacher')->get();
         $classes = AcademicClass::orderBy('name')->get(['id', 'name']);
-        $teachers = User::whereHas('roles', fn($q) => $q->whereIn('name', ['Guru', 'Super Admin']))
+        $teachers = User::whereHas('roles', fn($q) => $q->whereIn('name', ['Guru', 'Super Admin', 'Wali Kelas', 'Kepala Program', 'Kepala Sekolah']))
             ->orderBy('name')
             ->get(['id', 'name']);
         $subjects = Subject::orderBy('name')->get(['id', 'name', 'code']);
@@ -90,7 +90,7 @@ class ScheduleGeneratorController extends Controller
     public function autoPopulateFromClasses()
     {
         $classes = AcademicClass::with('subjects')->get();
-        $defaultTeacher = User::whereHas('roles', fn($q) => $q->whereIn('name', ['Guru', 'Super Admin']))->first();
+        $defaultTeacher = User::whereHas('roles', fn($q) => $q->whereIn('name', ['Guru', 'Super Admin', 'Wali Kelas', 'Kepala Program', 'Kepala Sekolah']))->first();
 
         if (!$defaultTeacher) {
             return back()->with('error', 'Tidak ditemukan data guru aktif di sistem.');

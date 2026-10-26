@@ -19,7 +19,7 @@ class ScheduleController extends Controller
             ->get();
 
         $classes = AcademicClass::orderBy('name')->get(['id', 'name']);
-        $teachers = User::whereHas('roles', fn($q) => $q->whereIn('name', ['Guru', 'Super Admin']))
+        $teachers = User::whereHas('roles', fn($q) => $q->whereIn('name', ['Guru', 'Super Admin', 'Wali Kelas', 'Kepala Program', 'Kepala Sekolah']))
             ->orderBy('name')
             ->get(['id', 'name']);
 
