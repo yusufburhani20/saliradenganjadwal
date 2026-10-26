@@ -77,8 +77,15 @@ class ScheduleGeneratorService
             ];
         }
 
-        // 4. Urutkan sesi: durasi terbesar & guru dengan jam terpadat diletakkan lebih awal (MRV heuristic)
+        // 4. Urutkan sesi: sesi dengan batasan hari khusus (misal Sabtu/Minggu saja) diletakkan pertama kali,
+        // lalu durasi terbesar & guru dengan jam terpadat (MRV heuristic)
         usort($sessions, function ($a, $b) {
+            $aDaysCount = !empty($a['allowed_days']) ? count($a['allowed_days']) : 99;
+            $bDaysCount = !empty($b['allowed_days']) ? count($b['allowed_days']) : 99;
+
+            if ($aDaysCount !== $bDaysCount) {
+                return $aDaysCount <=> $bDaysCount; // Yang pilihannya lebih sedikit (lebih ketat) diprioritaskan
+            }
             if ($b['duration'] !== $a['duration']) {
                 return $b['duration'] <=> $a['duration'];
             }
@@ -234,6 +241,11 @@ class ScheduleGeneratorService
         }
 
         foreach ($this->lessonHoursByDay as $day => $slots) {
+            // Jika ada pembatasan hari khusus (misal: hanya Sabtu atau Minggu)
+            if (!empty($session['allowed_days']) && !in_array($day, $session['allowed_days'])) {
+                continue;
+            }
+
             $slotCount = count($slots);
             if ($slotCount < $duration) {
                 continue;
@@ -357,6 +369,7 @@ class ScheduleGeneratorService
                     'subject_id' => $a->subject_id,
                     'subject_name' => $a->subject->name ?? "Mapel #{$a->subject_id}",
                     'duration' => $dur,
+                    'allowed_days' => $a->allowed_days ?: [],
                     'teacher_load' => $teacherTotalHours[$a->teacher_id] ?? 0,
                 ];
             }

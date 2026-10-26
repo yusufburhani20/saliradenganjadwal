@@ -15,6 +15,11 @@ class TeachingAssignment extends Model
         'teacher_id',
         'total_hours',
         'max_hours_per_day',
+        'allowed_days',
+    ];
+
+    protected $casts = [
+        'allowed_days' => 'array',
     ];
 
     public function academicClass()

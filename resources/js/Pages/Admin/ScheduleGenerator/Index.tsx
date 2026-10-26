@@ -42,6 +42,7 @@ interface TeachingAssignment {
     teacher_id: number;
     total_hours: number;
     max_hours_per_day: number;
+    allowed_days?: string[] | null;
     academic_class?: AcademicClass;
     subject?: Subject;
     teacher?: Teacher;
@@ -156,6 +157,7 @@ export default function ScheduleGeneratorIndex({
         teacher_id: teachers[0]?.id || '',
         total_hours: 2,
         max_hours_per_day: 2,
+        allowed_days: [] as string[],
     });
 
     // Unavailability Form
@@ -687,6 +689,13 @@ export default function ScheduleGeneratorIndex({
                                                             {a.subject.code}
                                                         </span>
                                                     )}
+                                                    {a.allowed_days && a.allowed_days.length > 0 && (
+                                                        <div className="mt-1">
+                                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200/50 dark:border-amber-800/50">
+                                                                📅 Hanya: {a.allowed_days.map(d => DAY_OPTIONS.find(x => x.value === d)?.label || d).join(', ')}
+                                                            </span>
+                                                        </div>
+                                                    )}
                                                 </td>
                                                 <td className="py-3 px-4 text-slate-600 dark:text-slate-400 font-medium">
                                                     {a.teacher?.name}
@@ -868,6 +877,42 @@ export default function ScheduleGeneratorIndex({
                                         required
                                     />
                                     <p className="text-[10px] text-slate-400 mt-1">Misal: 2 JP (dipecah 2x2)</p>
+                                </div>
+                            </div>
+
+                            {/* Batasan Hari Khusus (Kondisi Khusus: Sabtu / Minggu / Hari Tertentu) */}
+                            <div className="pt-1">
+                                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                    Kondisi Khusus Hari Mengajar (Opsional)
+                                </label>
+                                <p className="text-[10px] text-slate-400 mb-2">
+                                    Pilih hari jika guru/mapel ini <strong>hanya bisa</strong> dijadwalkan pada hari tertentu (misal: hanya Sabtu atau Minggu). Kosongkan jika bebas di semua hari KBM.
+                                </p>
+                                <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5">
+                                    {DAY_OPTIONS.map((d) => {
+                                        const isChecked = assignmentForm.data.allowed_days.includes(d.value);
+                                        return (
+                                            <button
+                                                type="button"
+                                                key={d.value}
+                                                onClick={() => {
+                                                    const cur = [...assignmentForm.data.allowed_days];
+                                                    if (isChecked) {
+                                                        assignmentForm.setData('allowed_days', cur.filter(x => x !== d.value));
+                                                    } else {
+                                                        assignmentForm.setData('allowed_days', [...cur, d.value]);
+                                                    }
+                                                }}
+                                                className={`py-1.5 px-2 rounded-xl text-[11px] font-bold border transition text-center ${
+                                                    isChecked
+                                                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                                                        : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                                                }`}
+                                            >
+                                                {d.label}
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             </div>
 

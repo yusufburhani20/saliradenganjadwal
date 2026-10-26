@@ -58,6 +58,7 @@ class ScheduleGeneratorController extends Controller
             'teacher_id' => 'required|exists:users,id',
             'total_hours' => 'required|integer|min:1|max:20',
             'max_hours_per_day' => 'required|integer|min:1|max:6',
+            'allowed_days' => 'nullable|array',
         ], [
             'academic_class_id.required' => 'Kelas wajib dipilih.',
             'subject_id.required' => 'Mata pelajaran wajib dipilih.',
@@ -75,6 +76,7 @@ class ScheduleGeneratorController extends Controller
                 'teacher_id' => $request->teacher_id,
                 'total_hours' => $request->total_hours,
                 'max_hours_per_day' => $request->max_hours_per_day,
+                'allowed_days' => $request->input('allowed_days') ?: null,
             ]
         );
 
