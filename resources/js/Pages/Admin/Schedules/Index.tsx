@@ -12,6 +12,8 @@ import {
     UserIcon,
     BookOpenIcon,
     XMarkIcon,
+    PrinterIcon,
+    ArrowDownTrayIcon,
 } from '@heroicons/react/24/outline';
 
 interface AcademicClass {
@@ -145,6 +147,38 @@ export default function ScheduleIndex({
         items: filtered.filter(s => s.day === day.value),
     })).filter(g => g.items.length > 0 || !filterDay);
 
+    const handleExportExcel = () => {
+        if (filtered.length === 0) {
+            alert('Tidak ada data jadwal untuk diekspor.');
+            return;
+        }
+
+        const headers = ['No', 'Hari', 'Jam Mulai', 'Jam Selesai', 'Kelas', 'Mata Pelajaran', 'Guru Pengampu'];
+        const rows = filtered.map((s, idx) => [
+            idx + 1,
+            getDayLabel(s.day),
+            formatTime(s.start_time),
+            formatTime(s.end_time),
+            `"${(s.academic_class?.name || '').replace(/"/g, '""')}"`,
+            `"${(s.subject || '').replace(/"/g, '""')}"`,
+            `"${(s.teacher?.name || '').replace(/"/g, '""')}"`,
+        ]);
+
+        const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\r\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `Jadwal_Pelajaran_Resmi_${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const handlePrint = () => {
+        window.print();
+    };
+
     return (
         <AuthenticatedLayout header={<h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">Jadwal Pelajaran</h2>}>
             <Head title="Jadwal Pelajaran" />
@@ -159,13 +193,31 @@ export default function ScheduleIndex({
                                 Kelola jadwal pelajaran mingguan. Jadwal ini digunakan untuk fitur <strong>Absensi Barcode Siswa</strong>.
                             </p>
                         </div>
-                        <button
-                            onClick={openAddModal}
-                            className="inline-flex items-center px-4 py-2 bg-primary border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest hover:bg-primary-hover transition-all shadow-sm"
-                        >
-                            <PlusIcon className="w-4 h-4 mr-2" />
-                            Tambah Jadwal
-                        </button>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <button
+                                onClick={handleExportExcel}
+                                className="inline-flex items-center px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold text-xs transition-all shadow-sm"
+                                title="Download spreadsheet CSV / Excel"
+                            >
+                                <ArrowDownTrayIcon className="w-4 h-4 mr-1.5" />
+                                Ekspor Excel
+                            </button>
+                            <button
+                                onClick={handlePrint}
+                                className="inline-flex items-center px-3.5 py-2 bg-slate-700 hover:bg-slate-800 text-white rounded-lg font-semibold text-xs transition-all shadow-sm"
+                                title="Cetak Jadwal atau Simpan PDF"
+                            >
+                                <PrinterIcon className="w-4 h-4 mr-1.5" />
+                                Cetak / PDF
+                            </button>
+                            <button
+                                onClick={openAddModal}
+                                className="inline-flex items-center px-4 py-2 bg-primary border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest hover:bg-primary-hover transition-all shadow-sm"
+                            >
+                                <PlusIcon className="w-4 h-4 mr-2" />
+                                Tambah Jadwal
+                            </button>
+                        </div>
                     </div>
 
                     {/* Stats */}
@@ -462,6 +514,18 @@ export default function ScheduleIndex({
                     </div>
                 </div>
             )}
+            {/* Print Styles */}
+            <style>{`
+                @media print {
+                    nav, header, aside, .no-print, [role="navigation"] {
+                        display: none !important;
+                    }
+                    body {
+                        background: white !important;
+                        color: black !important;
+                    }
+                }
+            `}</style>
         </AuthenticatedLayout>
     );
 }
