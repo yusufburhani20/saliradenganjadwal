@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Schedule;
 use App\Models\AcademicClass;
+use App\Models\AcademicYear;
 use App\Models\User;
 use App\Models\Setting;
 use Illuminate\Http\Request;
@@ -140,9 +141,18 @@ class SchedulePdfExportController extends Controller
             'friday' => 'Jumat'
         ];
 
-        $schoolName = Setting::get('school_name', 'Pondok Pesantren Idrisiyyah');
+        $schoolName = Setting::get('school_name', 'SIM SALIRA');
+        $activeYear = AcademicYear::where('is_active', true)->first();
+        $academicYear = $activeYear ? $activeYear->name : (date('Y') . '/' . (date('Y') + 1));
 
-        return compact('slots', 'activeDays', 'dayLabels', 'schoolName');
+        $months = [
+            1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
+            5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
+            9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'
+        ];
+        $printedAt = date('j') . ' ' . ($months[(int)date('n')] ?? date('F')) . ' ' . date('Y');
+
+        return compact('slots', 'activeDays', 'dayLabels', 'schoolName', 'academicYear', 'printedAt');
     }
 
     public function exportPdf(Request $request)
@@ -171,7 +181,9 @@ class SchedulePdfExportController extends Controller
         $activeDays = $common['activeDays'];
         $dayLabels = $common['dayLabels'];
         $schoolName = $common['schoolName'];
-        $validDate = $request->input('valid_date', '29 Agustus 2026');
+        $academicYear = $common['academicYear'];
+        $printedAt = $common['printedAt'];
+        $validDate = $request->input('valid_date');
 
         $query = AcademicClass::withoutGlobalScope('active_year')->orderBy('name');
         if ($request->filled('class_id')) {
@@ -240,6 +252,8 @@ class SchedulePdfExportController extends Controller
             'active_days' => $activeDays,
             'day_labels' => $dayLabels,
             'school_name' => $schoolName,
+            'academic_year' => $academicYear,
+            'printed_at' => $printedAt,
             'valid_date' => $validDate,
             'matrix' => $matrix,
         ]);
@@ -259,7 +273,9 @@ class SchedulePdfExportController extends Controller
         $activeDays = $common['activeDays'];
         $dayLabels = $common['dayLabels'];
         $schoolName = $common['schoolName'];
-        $validDate = $request->input('valid_date', '29 Agustus 2026');
+        $academicYear = $common['academicYear'];
+        $printedAt = $common['printedAt'];
+        $validDate = $request->input('valid_date');
 
         $query = User::orderBy('name');
         if ($request->filled('teacher_id')) {
@@ -329,6 +345,8 @@ class SchedulePdfExportController extends Controller
             'active_days' => $activeDays,
             'day_labels' => $dayLabels,
             'school_name' => $schoolName,
+            'academic_year' => $academicYear,
+            'printed_at' => $printedAt,
             'valid_date' => $validDate,
             'matrix' => $matrix,
         ]);
@@ -348,7 +366,9 @@ class SchedulePdfExportController extends Controller
         $activeDays = $common['activeDays'];
         $dayLabels = $common['dayLabels'];
         $schoolName = $common['schoolName'];
-        $validDate = $request->input('valid_date', '29 Agustus 2026');
+        $academicYear = $common['academicYear'];
+        $printedAt = $common['printedAt'];
+        $validDate = $request->input('valid_date');
 
         $availableLabs = ['LAB 1', 'LAB 2', 'LAB TI'];
         if ($request->filled('lab') && in_array($request->lab, $availableLabs)) {
@@ -414,6 +434,8 @@ class SchedulePdfExportController extends Controller
             'active_days' => $activeDays,
             'day_labels' => $dayLabels,
             'school_name' => $schoolName,
+            'academic_year' => $academicYear,
+            'printed_at' => $printedAt,
             'valid_date' => $validDate,
             'matrix' => $matrix,
         ]);
@@ -433,7 +455,9 @@ class SchedulePdfExportController extends Controller
         $activeDays = $common['activeDays'];
         $dayLabels = $common['dayLabels'];
         $schoolName = $common['schoolName'];
-        $validDate = $request->input('valid_date', '29 Agustus 2026');
+        $academicYear = $common['academicYear'];
+        $printedAt = $common['printedAt'];
+        $validDate = $request->input('valid_date');
 
         if ($request->filled('day') && in_array($request->day, $activeDays)) {
             $daysToExport = [$request->day];
@@ -504,6 +528,8 @@ class SchedulePdfExportController extends Controller
             'active_days' => $daysToExport,
             'day_labels' => $dayLabels,
             'school_name' => $schoolName,
+            'academic_year' => $academicYear,
+            'printed_at' => $printedAt,
             'valid_date' => $validDate,
             'matrix' => $matrix,
         ]);

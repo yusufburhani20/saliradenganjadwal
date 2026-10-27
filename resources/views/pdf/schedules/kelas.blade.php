@@ -5,7 +5,7 @@
     <title>Jadwal Kelas - {{ $school_name }}</title>
     <style>
         @page {
-            size: 11in 8.5in landscape; /* Letter Landscape matching aSc */
+            size: 11in 8.5in landscape; /* Letter Landscape */
             margin: 8mm 12mm 6mm 12mm;
         }
         * {
@@ -25,15 +25,9 @@
         .page-container:last-child {
             page-break-after: avoid;
         }
-        .top-code {
-            font-size: 8pt;
-            color: #000;
-            margin-bottom: 2px;
-            font-family: monospace;
-        }
         .header {
             text-align: center;
-            margin-bottom: 8px;
+            margin-bottom: 10px;
         }
         .school-title {
             font-size: 18pt;
@@ -112,23 +106,22 @@
         }
         .footer-table {
             width: 100%;
-            margin-top: 4px;
+            margin-top: 6px;
             font-size: 8pt;
-            color: #000;
+            color: #333;
         }
         .footer-left {
             text-align: left;
         }
         .footer-right {
             text-align: right;
+            font-weight: bold;
         }
     </style>
 </head>
 <body>
     @foreach($classes as $class)
     <div class="page-container">
-        <div class="top-code">Slogutis | AT4RE</div>
-        
         <div class="header">
             <h1 class="school-title">{{ $school_name }}</h1>
             <h2 class="entity-name">{{ $class->name }}</h2>
@@ -177,8 +170,14 @@
 
         <table class="footer-table">
             <tr>
-                <td class="footer-left">Jadwal Mulai Berlaku pada Tanggal {{ $valid_date ?? date('d F Y') }}</td>
-                <td class="footer-right">aSc Timetables</td>
+                <td class="footer-left">
+                    @if(!empty($valid_date))
+                        Jadwal Mulai Berlaku: {{ $valid_date }}
+                    @else
+                        Tahun Ajaran {{ $academic_year ?? '' }} &bull; Dicetak: {{ $printed_at ?? date('d/m/Y') }}
+                    @endif
+                </td>
+                <td class="footer-right">{{ $school_name }}</td>
             </tr>
         </table>
     </div>

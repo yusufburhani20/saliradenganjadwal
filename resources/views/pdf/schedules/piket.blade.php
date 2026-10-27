@@ -5,7 +5,7 @@
     <title>Jadwal Piket Guru - {{ $school_name }}</title>
     <style>
         @page {
-            size: 11in 8.5in landscape; /* Letter Landscape matching aSc */
+            size: 11in 8.5in landscape; /* Letter Landscape */
             margin: 6mm 6mm 5mm 6mm;
         }
         * {
@@ -25,15 +25,9 @@
         .page-container:last-child {
             page-break-after: avoid;
         }
-        .top-code {
-            font-size: 7pt;
-            color: #000;
-            margin-bottom: 2px;
-            font-family: monospace;
-        }
         .header {
             text-align: center;
-            margin-bottom: 5px;
+            margin-bottom: 6px;
         }
         .school-title {
             font-size: 15pt;
@@ -115,23 +109,22 @@
         }
         .footer-table {
             width: 100%;
-            margin-top: 4px;
+            margin-top: 5px;
             font-size: 7.5pt;
-            color: #000;
+            color: #333;
         }
         .footer-left {
             text-align: left;
         }
         .footer-right {
             text-align: right;
+            font-weight: bold;
         }
     </style>
 </head>
 <body>
     @foreach($active_days as $day)
     <div class="page-container">
-        <div class="top-code">Slogutis | AT4RE</div>
-        
         <div class="header">
             <h1 class="school-title">{{ $school_name }}</h1>
             <h2 class="entity-name">Jadwal Kelas / Piket Harian - Hari {{ $day_labels[$day] ?? ucfirst($day) }}</h2>
@@ -180,8 +173,14 @@
 
         <table class="footer-table">
             <tr>
-                <td class="footer-left">Jadwal Mulai Berlaku pada Tanggal {{ $valid_date ?? date('d F Y') }}</td>
-                <td class="footer-right">aSc Timetables</td>
+                <td class="footer-left">
+                    @if(!empty($valid_date))
+                        Jadwal Mulai Berlaku: {{ $valid_date }}
+                    @else
+                        Tahun Ajaran {{ $academic_year ?? '' }} &bull; Dicetak: {{ $printed_at ?? date('d/m/Y') }}
+                    @endif
+                </td>
+                <td class="footer-right">{{ $school_name }}</td>
             </tr>
         </table>
     </div>
