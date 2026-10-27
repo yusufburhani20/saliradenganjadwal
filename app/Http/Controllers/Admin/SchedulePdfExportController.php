@@ -258,7 +258,7 @@ class SchedulePdfExportController extends Controller
             'matrix' => $matrix,
         ]);
 
-        $pdf->setPaper('letter', 'landscape');
+        $pdf->setPaper('a4', 'landscape');
         $filename = 'Jadwal_Kelas_' . date('Ymd_His') . '.pdf';
         if ($request->boolean('download')) {
             return $pdf->download($filename);
@@ -351,7 +351,7 @@ class SchedulePdfExportController extends Controller
             'matrix' => $matrix,
         ]);
 
-        $pdf->setPaper('letter', 'landscape');
+        $pdf->setPaper('a4', 'landscape');
         $filename = 'Jadwal_Guru_' . date('Ymd_His') . '.pdf';
         if ($request->boolean('download')) {
             return $pdf->download($filename);
@@ -440,7 +440,7 @@ class SchedulePdfExportController extends Controller
             'matrix' => $matrix,
         ]);
 
-        $pdf->setPaper('letter', 'landscape');
+        $pdf->setPaper('a4', 'landscape');
         $filename = 'Jadwal_Lab_' . date('Ymd_His') . '.pdf';
         if ($request->boolean('download')) {
             return $pdf->download($filename);
@@ -534,7 +534,7 @@ class SchedulePdfExportController extends Controller
             'matrix' => $matrix,
         ]);
 
-        $pdf->setPaper('letter', 'landscape');
+        $pdf->setPaper('a4', 'landscape');
         $filename = 'Jadwal_Piket_' . date('Ymd_His') . '.pdf';
         if ($request->boolean('download')) {
             return $pdf->download($filename);

@@ -5,8 +5,8 @@
     <title>Jadwal Piket Guru - {{ $school_name }}</title>
     <style>
         @page {
-            size: 11in 8.5in landscape; /* Letter Landscape */
-            margin: 6mm 6mm 5mm 6mm;
+            size: a4 landscape;
+            margin: 6mm 8mm 5mm 8mm;
         }
         * {
             box-sizing: border-box;
@@ -27,7 +27,7 @@
         }
         .header {
             text-align: center;
-            margin-bottom: 6px;
+            margin-bottom: 5px;
         }
         .school-title {
             font-size: 15pt;
@@ -46,59 +46,66 @@
             width: 100%;
             border-collapse: collapse;
             table-layout: fixed;
-            border: 2px solid #000;
+            border: 1.5pt solid #000;
         }
         table.timetable th, table.timetable td {
-            border: 1px solid #000;
+            border: 1pt solid #000;
             padding: 1px 1px;
             text-align: center;
             vertical-align: middle;
             word-wrap: break-word;
             overflow: hidden;
+            empty-cells: show;
         }
         table.timetable thead th {
-            font-size: 6.5pt;
+            font-size: 7pt;
             font-weight: bold;
-            height: 26px;
-            border-bottom: 2px solid #000;
-            background-color: #fff;
+            height: 26pt;
+            border-bottom: 2pt solid #000;
+            background-color: #f8f9fa;
             padding: 2px 0;
             line-height: 1.1;
         }
+        table.timetable tbody tr {
+            height: 48pt;
+        }
+        table.timetable tbody td {
+            height: 48pt;
+        }
         .slot-col {
             width: 38px;
-            border-right: 2px solid #000 !important;
-            background-color: #fff;
+            border-right: 2pt solid #000 !important;
+            background-color: #f8f9fa;
         }
         .slot-num {
-            font-size: 12pt;
+            font-size: 14pt;
             font-weight: bold;
             line-height: 1;
         }
         .slot-time {
-            font-size: 5pt;
+            font-size: 5.5pt;
             color: #000;
             margin-top: 1px;
             font-family: Arial, sans-serif;
+            white-space: nowrap;
         }
         .cell-content {
-            padding: 1px;
-            min-height: 28px;
-            line-height: 1.05;
+            padding: 1px 2px;
+            line-height: 1.1;
         }
         .cell-subject {
-            font-size: 6.2pt;
+            font-size: 6.8pt;
             font-weight: bold;
             color: #000;
             margin-bottom: 1px;
         }
         .cell-teacher {
-            font-size: 5.2pt;
+            font-size: 5.8pt;
             color: #111;
             line-height: 1.05;
         }
         .cell-room {
-            font-size: 4.8pt;
+            font-size: 5pt;
             font-weight: bold;
             color: #333;
             text-align: right;
@@ -163,7 +170,7 @@
                                 @endif
                             </td>
                         @else
-                            <td class="cell-empty"></td>
+                            <td class="cell-empty">&nbsp;</td>
                         @endif
                     @endforeach
                 </tr>

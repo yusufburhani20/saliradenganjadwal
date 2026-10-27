@@ -5,8 +5,8 @@
     <title>Jadwal Lab Komputer - {{ $school_name }}</title>
     <style>
         @page {
-            size: 11in 8.5in landscape; /* Letter Landscape */
-            margin: 8mm 12mm 6mm 12mm;
+            size: a4 landscape;
+            margin: 8mm 10mm 6mm 10mm;
         }
         * {
             box-sizing: border-box;
@@ -27,60 +27,66 @@
         }
         .header {
             text-align: center;
-            margin-bottom: 10px;
+            margin-bottom: 6px;
         }
         .school-title {
-            font-size: 18pt;
+            font-size: 16pt;
             font-weight: bold;
             margin: 0;
             line-height: 1.15;
             letter-spacing: 0.5px;
         }
         .entity-name {
-            font-size: 18pt;
+            font-size: 16pt;
             font-weight: bold;
-            margin: 3px 0 0 0;
+            margin: 2px 0 0 0;
             line-height: 1.15;
         }
         table.timetable {
             width: 100%;
             border-collapse: collapse;
             table-layout: fixed;
-            border: 2px solid #000;
+            border: 1.5pt solid #000;
         }
         table.timetable th, table.timetable td {
-            border: 1px solid #000;
-            padding: 3px 2px;
+            border: 1pt solid #000;
             text-align: center;
             vertical-align: middle;
             word-wrap: break-word;
+            empty-cells: show;
         }
         table.timetable thead th {
-            font-size: 14pt;
+            font-size: 13pt;
             font-weight: bold;
-            height: 32px;
-            border-bottom: 2px solid #000;
-            background-color: #fff;
+            height: 28pt;
+            border-bottom: 2pt solid #000;
+            background-color: #f8f9fa;
+        }
+        table.timetable tbody tr {
+            height: 48pt;
+        }
+        table.timetable tbody td {
+            height: 48pt;
         }
         .slot-col {
-            width: 70px;
-            border-right: 2px solid #000 !important;
-            background-color: #fff;
+            width: 65px;
+            border-right: 2pt solid #000 !important;
+            background-color: #f8f9fa;
         }
         .slot-num {
-            font-size: 15pt;
+            font-size: 16pt;
             font-weight: bold;
             line-height: 1;
         }
         .slot-time {
-            font-size: 7pt;
+            font-size: 7.5pt;
             color: #000;
             margin-top: 2px;
             font-family: Arial, sans-serif;
+            white-space: nowrap;
         }
         .cell-content {
-            padding: 2px 3px;
-            min-height: 35px;
+            padding: 2px 4px;
         }
         .cell-class {
             font-size: 10pt;
@@ -96,7 +102,7 @@
             line-height: 1.15;
         }
         .cell-teacher {
-            font-size: 8pt;
+            font-size: 8.5pt;
             color: #222;
             margin-top: 2px;
             line-height: 1.1;
@@ -158,7 +164,7 @@
                                 <div class="cell-teacher">{{ $cell['schedule']->teacher->name ?? '-' }}</div>
                             </td>
                         @else
-                            <td class="cell-empty"></td>
+                            <td class="cell-empty">&nbsp;</td>
                         @endif
                     @endforeach
                 </tr>
