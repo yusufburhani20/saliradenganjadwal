@@ -172,7 +172,11 @@
             <tr>
                 <td class="footer-left">
                     @if(!empty($valid_date))
-                        Jadwal Mulai Berlaku: {{ $valid_date }}
+                        @if(stripos($valid_date, 'berlaku') !== false)
+                            {{ $valid_date }}
+                        @else
+                            Jadwal Mulai Berlaku pada Tanggal {{ $valid_date }}
+                        @endif
                     @else
                         Tahun Ajaran {{ $academic_year ?? '' }} &bull; Dicetak: {{ $printed_at ?? date('d/m/Y') }}
                     @endif

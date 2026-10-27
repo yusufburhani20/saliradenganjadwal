@@ -125,6 +125,7 @@ export default function ScheduleIndex({
     const [selectedClassForPdf, setSelectedClassForPdf] = useState<string>('');
     const [selectedLabForPdf, setSelectedLabForPdf] = useState<string>('');
     const [selectedDayForPdf, setSelectedDayForPdf] = useState<string>('');
+    const [validDateForPdf, setValidDateForPdf]     = useState<string>('29 Agustus 2026');
 
     React.useEffect(() => {
         if (typeof window !== 'undefined' && window.location.search.includes('openExport=pdf')) {
@@ -877,12 +878,40 @@ export default function ScheduleIndex({
                         </div>
 
                         {/* SECTION 1: 4 FORMAT RESMI aSc TIMETABLES */}
-                        <div className="space-y-3">
-                            <div className="flex items-center gap-2">
-                                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
-                                    Format Resmi aSc Timetables
-                                </span>
-                                <span className="text-xs text-gray-400">Layout Landscape Letter rapi & cell-merging</span>
+                        <div className="space-y-3.5">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                <div className="flex items-center gap-2">
+                                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                                        Format Resmi aSc Timetables
+                                    </span>
+                                    <span className="text-xs text-gray-400">Layout Landscape Letter rapi & cell-merging</span>
+                                </div>
+                            </div>
+
+                            {/* ISIAN TANGGAL MULAI BERLAKU UNTUK FOOTER PDF */}
+                            <div className="p-3.5 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/20 rounded-2xl border border-amber-200/80 dark:border-amber-800/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                                <div className="flex items-center gap-2.5">
+                                    <div className="p-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0">
+                                        <CalendarDaysIcon className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-800 dark:text-gray-100">
+                                            Jadwal Mulai Berlaku pada Tanggal:
+                                        </label>
+                                        <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                                            Tercetak otomatis di sudut kiri bawah footer seluruh dokumen PDF
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="w-full sm:w-72">
+                                    <input
+                                        type="text"
+                                        value={validDateForPdf}
+                                        onChange={e => setValidDateForPdf(e.target.value)}
+                                        placeholder="Contoh: 29 Agustus 2026"
+                                        className="w-full text-xs font-semibold rounded-xl border-amber-300 dark:border-amber-700/60 dark:bg-gray-800 dark:text-gray-100 px-3 py-2 focus:ring-amber-500 focus:border-amber-500 shadow-inner bg-white/90"
+                                    />
+                                </div>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
@@ -914,7 +943,7 @@ export default function ScheduleIndex({
                                             ))}
                                         </select>
                                         <a
-                                            href={`/admin/schedules/export-pdf?type=guru${selectedTeacherForPdf ? `&teacher_id=${selectedTeacherForPdf}` : ''}`}
+                                            href={`/admin/schedules/export-pdf?type=guru${selectedTeacherForPdf ? `&teacher_id=${selectedTeacherForPdf}` : ''}${validDateForPdf ? `&valid_date=${encodeURIComponent(validDateForPdf)}` : ''}`}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold transition shadow-xs"
@@ -953,7 +982,7 @@ export default function ScheduleIndex({
                                             ))}
                                         </select>
                                         <a
-                                            href={`/admin/schedules/export-pdf?type=kelas${selectedClassForPdf ? `&class_id=${selectedClassForPdf}` : ''}`}
+                                            href={`/admin/schedules/export-pdf?type=kelas${selectedClassForPdf ? `&class_id=${selectedClassForPdf}` : ''}${validDateForPdf ? `&valid_date=${encodeURIComponent(validDateForPdf)}` : ''}`}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-xs"
@@ -992,7 +1021,7 @@ export default function ScheduleIndex({
                                             <option value="LAB TI">LAB TI</option>
                                         </select>
                                         <a
-                                            href={`/admin/schedules/export-pdf?type=lab${selectedLabForPdf ? `&lab=${encodeURIComponent(selectedLabForPdf)}` : ''}`}
+                                            href={`/admin/schedules/export-pdf?type=lab${selectedLabForPdf ? `&lab=${encodeURIComponent(selectedLabForPdf)}` : ''}${validDateForPdf ? `&valid_date=${encodeURIComponent(validDateForPdf)}` : ''}`}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-xs"
@@ -1034,7 +1063,7 @@ export default function ScheduleIndex({
                                             <option value="thursday">Kamis</option>
                                         </select>
                                         <a
-                                            href={`/admin/schedules/export-pdf?type=piket${selectedDayForPdf ? `&day=${selectedDayForPdf}` : ''}`}
+                                            href={`/admin/schedules/export-pdf?type=piket${selectedDayForPdf ? `&day=${selectedDayForPdf}` : ''}${validDateForPdf ? `&valid_date=${encodeURIComponent(validDateForPdf)}` : ''}`}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition shadow-xs"
