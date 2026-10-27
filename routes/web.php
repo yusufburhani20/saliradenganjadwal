@@ -86,6 +86,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/schedule-generator/clear', [\App\Http\Controllers\Admin\ScheduleGeneratorController::class, 'clearAssignments'])->name('schedule-generator.clear');
         Route::post('/schedule-generator/unavailabilities', [\App\Http\Controllers\Admin\ScheduleGeneratorController::class, 'storeUnavailability'])->name('schedule-generator.unavailabilities.store');
         Route::delete('/schedule-generator/unavailabilities/{unavailability}', [\App\Http\Controllers\Admin\ScheduleGeneratorController::class, 'destroyUnavailability'])->name('schedule-generator.unavailabilities.destroy');
+        Route::post('/schedule-generator/constraints', [\App\Http\Controllers\Admin\ScheduleGeneratorController::class, 'storeConstraint'])->name('schedule-generator.constraints.store');
+        Route::delete('/schedule-generator/constraints/{constraint}', [\App\Http\Controllers\Admin\ScheduleGeneratorController::class, 'destroyConstraint'])->name('schedule-generator.constraints.destroy');
         Route::post('/schedule-generator/generate', [\App\Http\Controllers\Admin\ScheduleGeneratorController::class, 'runGenerate'])->name('schedule-generator.generate');
         Route::post('/schedule-generator/apply', [\App\Http\Controllers\Admin\ScheduleGeneratorController::class, 'applySchedules'])->name('schedule-generator.apply');
         Route::post('/schedule-generator/import-asc', [\App\Http\Controllers\Admin\ScheduleGeneratorController::class, 'importAsc'])->name('schedule-generator.import-asc');

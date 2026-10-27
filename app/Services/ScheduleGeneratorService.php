@@ -6,6 +6,7 @@ use App\Models\AcademicClass;
 use App\Models\Subject;
 use App\Models\TeachingAssignment;
 use App\Models\TeacherUnavailability;
+use App\Models\TeacherScheduleConstraint;
 use App\Models\Schedule;
 use App\Models\Setting;
 use Illuminate\Support\Facades\DB;
@@ -15,6 +16,7 @@ class ScheduleGeneratorService
 {
     protected array $lessonHoursByDay = [];
     protected array $unavailabilities = []; // [teacher_id][day][slot_index] => true
+    protected array $teacherConstraints = []; // [teacher_id] => ['max_days_per_week' => ?int, 'max_hours_per_day' => ?int]
 
     public function __construct()
     {
@@ -58,8 +60,9 @@ class ScheduleGeneratorService
             ];
         }
 
-        // 2. Ambil data ketidaksediaan guru
+        // 2. Ambil data ketidaksediaan guru & batasan kuota mengajar
         $this->loadUnavailabilities();
+        $this->loadTeacherConstraints();
 
         // 3. Pecah setiap alokasi menjadi chunk/sesi pertemuan
         $sessions = $this->decomposeAssignmentsToSessions($assignments);
@@ -312,6 +315,33 @@ class ScheduleGeneratorService
                 continue;
             }
 
+            // Batasan kuota hari maksimal mengajar guru (max_days_per_week)
+            $maxDays = $this->teacherConstraints[$teacherId]['max_days_per_week'] ?? null;
+            if ($maxDays !== null) {
+                $teacherDays = $teacherGrid[$teacherId] ?? [];
+                $isExistingDay = !empty($teacherDays[$day]);
+                if (!$isExistingDay) {
+                    $activeDaysCount = 0;
+                    foreach ($teacherDays as $dName => $daySlots) {
+                        if (!empty($daySlots)) {
+                            $activeDaysCount++;
+                        }
+                    }
+                    if ($activeDaysCount >= $maxDays) {
+                        continue; // Melebihi batas maksimal hari mengajar guru
+                    }
+                }
+            }
+
+            // Batasan kuota JP maksimal per hari bagi guru (max_hours_per_day)
+            $maxDaily = $this->teacherConstraints[$teacherId]['max_hours_per_day'] ?? null;
+            if ($maxDaily !== null) {
+                $currentDailyHours = count($teacherGrid[$teacherId][$day] ?? []);
+                if (($currentDailyHours + $duration) > $maxDaily) {
+                    continue; // Melebihi beban maksimal JP per hari bagi guru ini
+                }
+            }
+
             $slotCount = count($slots);
             if ($slotCount < $duration) {
                 continue;
@@ -350,6 +380,12 @@ class ScheduleGeneratorService
                     }
                     // Jam pagi lebih diprioritaskan
                     $score += max(0, 10 - $start);
+
+                    // Bonus konsolidasi hari guru: prioritaskan hari yang memang sudah ada jadwal guru ini
+                    // agar jadwal guru terkumpul dan tidak terpecah-pecah ke terlalu banyak hari
+                    if (!empty($teacherGrid[$teacherId][$day])) {
+                        $score += 15;
+                    }
 
                     $validSlots[] = [
                         'day' => $day,
@@ -398,6 +434,22 @@ class ScheduleGeneratorService
             } else {
                 $this->unavailabilities[$r->teacher_id][$r->day][$r->slot_index] = true;
             }
+        }
+    }
+
+    /**
+     * Muat data batasan beban guru (kuota maksimal hari & jam per hari)
+     */
+    protected function loadTeacherConstraints(): void
+    {
+        $this->teacherConstraints = [];
+        $records = TeacherScheduleConstraint::all();
+
+        foreach ($records as $r) {
+            $this->teacherConstraints[$r->teacher_id] = [
+                'max_days_per_week' => $r->max_days_per_week ? (int) $r->max_days_per_week : null,
+                'max_hours_per_day' => $r->max_hours_per_day ? (int) $r->max_hours_per_day : null,
+            ];
         }
     }
 

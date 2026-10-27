@@ -8,6 +8,7 @@ use App\Models\Subject;
 use App\Models\User;
 use App\Models\TeachingAssignment;
 use App\Models\TeacherUnavailability;
+use App\Models\TeacherScheduleConstraint;
 use App\Models\Setting;
 use App\Services\ScheduleGeneratorService;
 use Illuminate\Http\Request;
@@ -33,6 +34,7 @@ class ScheduleGeneratorController extends Controller
             ->values();
 
         $unavailabilities = TeacherUnavailability::with('teacher')->get();
+        $constraints = TeacherScheduleConstraint::with('teacher')->get();
         $classes = AcademicClass::orderBy('name')->get(['id', 'name']);
         $teachers = User::whereHas('roles', fn($q) => $q->whereIn('name', ['Guru', 'Super Admin', 'Wali Kelas', 'Kepala Program', 'Kepala Sekolah']))
             ->orderBy('name')
@@ -43,6 +45,7 @@ class ScheduleGeneratorController extends Controller
         return Inertia::render('Admin/ScheduleGenerator/Index', [
             'assignments' => $assignments,
             'unavailabilities' => $unavailabilities,
+            'constraints' => $constraints,
             'classes' => $classes,
             'teachers' => $teachers,
             'subjects' => $subjects,
@@ -180,6 +183,35 @@ class ScheduleGeneratorController extends Controller
     {
         $unavailability->delete();
         return back()->with('success', 'Data ketidaksediaan berhasil dihapus.');
+    }
+
+    public function storeConstraint(Request $request)
+    {
+        $request->validate([
+            'teacher_id' => 'required|exists:users,id',
+            'max_days_per_week' => 'nullable|integer|min:1|max:6',
+            'max_hours_per_day' => 'nullable|integer|min:1|max:12',
+        ], [
+            'teacher_id.required' => 'Guru wajib dipilih.',
+            'max_days_per_week.min' => 'Maksimal hari mengajar minimal 1 hari.',
+            'max_days_per_week.max' => 'Maksimal hari mengajar maksimal 6 hari.',
+        ]);
+
+        TeacherScheduleConstraint::updateOrCreate(
+            ['teacher_id' => $request->teacher_id],
+            [
+                'max_days_per_week' => $request->input('max_days_per_week') ?: null,
+                'max_hours_per_day' => $request->input('max_hours_per_day') ?: null,
+            ]
+        );
+
+        return back()->with('success', 'Batasan kuota hari & jam guru berhasil disimpan.');
+    }
+
+    public function destroyConstraint(TeacherScheduleConstraint $constraint)
+    {
+        $constraint->delete();
+        return back()->with('success', 'Batasan kuota guru berhasil dihapus.');
     }
 
     public function runGenerate(Request $request)

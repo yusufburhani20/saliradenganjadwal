@@ -21,6 +21,9 @@ import {
     UserGroupIcon,
     ArrowUpTrayIcon,
     DocumentArrowUpIcon,
+    PrinterIcon,
+    ArrowDownTrayIcon,
+    AdjustmentsHorizontalIcon,
 } from '@heroicons/react/24/outline';
 
 interface AcademicClass {
@@ -61,6 +64,14 @@ interface TeacherUnavailability {
     teacher?: Teacher;
 }
 
+interface TeacherConstraint {
+    id: number;
+    teacher_id: number;
+    max_days_per_week: number | null;
+    max_hours_per_day: number | null;
+    teacher?: Teacher;
+}
+
 interface LessonHourSlot {
     label: string;
     start: string;
@@ -90,6 +101,7 @@ interface GeneratedScheduleItem {
 interface Props extends PageProps {
     assignments: TeachingAssignment[];
     unavailabilities: TeacherUnavailability[];
+    constraints: TeacherConstraint[];
     classes: AcademicClass[];
     teachers: Teacher[];
     subjects: Subject[];
@@ -121,6 +133,7 @@ export default function ScheduleGeneratorIndex({
     auth,
     assignments,
     unavailabilities,
+    constraints,
     classes,
     teachers,
     subjects,
@@ -136,6 +149,8 @@ export default function ScheduleGeneratorIndex({
     const [showAssignmentModal, setShowAssignmentModal] = useState(false);
     const [showBatchAssignModal, setShowBatchAssignModal] = useState(false);
     const [showUnavailabilityModal, setShowUnavailabilityModal] = useState(false);
+    const [showConstraintModal, setShowConstraintModal] = useState(false);
+    const [editingConstraint, setEditingConstraint] = useState<TeacherConstraint | null>(null);
     const [showApplyModal, setShowApplyModal] = useState(false);
     const [showAscImportModal, setShowAscImportModal] = useState(false);
 
@@ -179,6 +194,13 @@ export default function ScheduleGeneratorIndex({
         day: 'monday',
         slot_index: '',
         reason: '',
+    });
+
+    // Teacher Constraints Form (Batas Hari Mengajar & JP Harian)
+    const constraintForm = useForm({
+        teacher_id: teachers[0]?.id || '',
+        max_days_per_week: '' as number | string,
+        max_hours_per_day: '' as number | string,
     });
 
     // aSc TimeTables XML Import Form
@@ -270,6 +292,86 @@ export default function ScheduleGeneratorIndex({
         if (confirm('Hapus preferensi ketidaksediaan ini?')) {
             router.delete(route('admin.schedule-generator.unavailabilities.destroy', id));
         }
+    };
+
+    const handleOpenConstraintModal = (constraint?: TeacherConstraint) => {
+        if (constraint) {
+            setEditingConstraint(constraint);
+            constraintForm.setData({
+                teacher_id: constraint.teacher_id,
+                max_days_per_week: constraint.max_days_per_week ?? '',
+                max_hours_per_day: constraint.max_hours_per_day ?? '',
+            });
+        } else {
+            setEditingConstraint(null);
+            constraintForm.setData({
+                teacher_id: teachers[0]?.id || '',
+                max_days_per_week: '',
+                max_hours_per_day: '',
+            });
+        }
+        setShowConstraintModal(true);
+    };
+
+    const handleSaveConstraint = (e: React.FormEvent) => {
+        e.preventDefault();
+        constraintForm.post(route('admin.schedule-generator.constraints.store'), {
+            onSuccess: () => {
+                setShowConstraintModal(false);
+                constraintForm.reset();
+                setEditingConstraint(null);
+            },
+        });
+    };
+
+    const handleDeleteConstraint = (id: number) => {
+        if (confirm('Hapus batasan kuota hari/jam guru ini?')) {
+            router.delete(route('admin.schedule-generator.constraints.destroy', id));
+        }
+    };
+
+    const handleExportCsv = () => {
+        if (!generationResult || !generationResult.schedules || generationResult.schedules.length === 0) {
+            alert('Belum ada jadwal yang siap diekspor.');
+            return;
+        }
+
+        const dayLabelMap: Record<string, string> = {
+            monday: 'Senin',
+            tuesday: 'Selasa',
+            wednesday: 'Rabu',
+            thursday: 'Kamis',
+            friday: 'Jumat',
+            saturday: 'Sabtu',
+            sunday: 'Minggu',
+        };
+
+        const headers = ['No', 'Hari', 'Jam Ke', 'Waktu Mulai', 'Waktu Selesai', 'Durasi (JP)', 'Kelas', 'Mata Pelajaran', 'Guru Pengampu'];
+        const rows = generationResult.schedules.map((s, idx) => [
+            idx + 1,
+            dayLabelMap[s.day] || s.day,
+            `Jam ke-${s.start_slot + 1}${s.duration > 1 ? '-' + (s.start_slot + s.duration) : ''}`,
+            s.start_time,
+            s.end_time,
+            `${s.duration} JP`,
+            `"${(s.class_name || '').replace(/"/g, '""')}"`,
+            `"${(s.subject || '').replace(/"/g, '""')}"`,
+            `"${(s.teacher_name || '').replace(/"/g, '""')}"`,
+        ]);
+
+        const csvContent = '\uFEFF' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `Jadwal_Pelajaran_Simulasi_${new Date().toISOString().slice(0, 10)}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const handlePrintSchedule = () => {
+        window.print();
     };
 
     const handleAscImportSubmit = (e: React.FormEvent) => {
@@ -475,7 +577,7 @@ export default function ScheduleGeneratorIndex({
                         }`}
                     >
                         <ClockIcon className="w-4 h-4" />
-                        3. Batasan / Preferensi Guru ({unavailabilities.length})
+                        3. Batasan & Preferensi Guru ({constraints.length + unavailabilities.length})
                     </button>
                 </div>
 
@@ -498,7 +600,7 @@ export default function ScheduleGeneratorIndex({
                                     </p>
                                 </div>
 
-                                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                                <div className="flex flex-wrap items-stretch sm:items-center gap-2.5">
                                     <button
                                         onClick={runGenerator}
                                         disabled={isGenerating || assignments.length === 0}
@@ -509,13 +611,33 @@ export default function ScheduleGeneratorIndex({
                                     </button>
 
                                     {generationResult && generationResult.schedules.length > 0 && (
-                                        <button
-                                            onClick={() => setShowApplyModal(true)}
-                                            className="inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-white hover:bg-slate-100 text-slate-900 font-bold rounded-2xl shadow-lg transition active:scale-95"
-                                        >
-                                            <CheckCircleIcon className="w-5 h-5 text-indigo-600" />
-                                            Terapkan ke Jadwal Resmi
-                                        </button>
+                                        <>
+                                            <button
+                                                onClick={handleExportCsv}
+                                                className="inline-flex items-center justify-center gap-2 px-4 py-3.5 bg-white/10 hover:bg-white/20 text-white font-bold rounded-2xl shadow-lg transition active:scale-95 border border-white/20"
+                                                title="Download Jadwal dalam format file Excel / CSV"
+                                            >
+                                                <ArrowDownTrayIcon className="w-5 h-5 text-emerald-400" />
+                                                Ekspor Excel
+                                            </button>
+
+                                            <button
+                                                onClick={handlePrintSchedule}
+                                                className="inline-flex items-center justify-center gap-2 px-4 py-3.5 bg-white/10 hover:bg-white/20 text-white font-bold rounded-2xl shadow-lg transition active:scale-95 border border-white/20"
+                                                title="Cetak Jadwal atau Simpan sebagai PDF"
+                                            >
+                                                <PrinterIcon className="w-5 h-5 text-indigo-300" />
+                                                Cetak / PDF
+                                            </button>
+
+                                            <button
+                                                onClick={() => setShowApplyModal(true)}
+                                                className="inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-white hover:bg-slate-100 text-slate-900 font-bold rounded-2xl shadow-lg transition active:scale-95"
+                                            >
+                                                <CheckCircleIcon className="w-5 h-5 text-indigo-600" />
+                                                Terapkan ke Jadwal Resmi
+                                            </button>
+                                        </>
                                     )}
                                 </div>
                             </div>
@@ -560,8 +682,16 @@ export default function ScheduleGeneratorIndex({
 
                         {/* Visual Timetable Grid Matrix */}
                         {generationResult && generationResult.schedules.length > 0 ? (
-                            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-6">
-                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
+                            <div id="printable-schedule-area" className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-6">
+                                {/* Print Header */}
+                                <div className="hidden print:block text-center border-b pb-4 mb-4">
+                                    <h2 className="text-xl font-bold uppercase tracking-wider text-slate-900">Jadwal Pelajaran Sekolah</h2>
+                                    <p className="text-xs text-slate-500 mt-0.5">
+                                        {viewMode === 'class' ? 'Matriks Jadwal Per Kelas' : 'Matriks Jadwal Per Guru'} • SIM Salira
+                                    </p>
+                                </div>
+
+                                <div className="no-print flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
                                     <div className="flex items-center gap-3">
                                         <div className="inline-flex rounded-xl bg-slate-100 dark:bg-slate-800 p-1">
                                             <button
@@ -875,66 +1005,145 @@ export default function ScheduleGeneratorIndex({
                     </div>
                 )}
 
-                {/* TAB 3: PREFERENSI GURU (UNAVAILABILITIES) */}
+                {/* TAB 3: PREFERENSI & BATASAN GURU */}
                 {activeTab === 'unavailabilities' && (
-                    <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-6">
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                            <div>
-                                <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Batasan / Ketidaksediaan Guru</h3>
-                                <p className="text-xs text-slate-500 mt-0.5">
-                                    Tentukan hari atau jam tertentu di mana seorang guru tidak dapat dijadwalkan (misal: guru honorer/part-time)
-                                </p>
+                    <div className="space-y-6">
+                        {/* BAGIAN 1: BATASAN KUOTA HARI & JP HARIAN GURU */}
+                        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-6">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <AdjustmentsHorizontalIcon className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                                        <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Batasan Kuota Hari & Beban Harian Guru</h3>
+                                    </div>
+                                    <p className="text-xs text-slate-500 mt-1">
+                                        Membatasi jumlah hari maksimal seorang guru mengajar per minggu (misal guru honorer/part-time 2-4 hari) dan batas JP per hari.
+                                    </p>
+                                </div>
+
+                                <button
+                                    onClick={() => handleOpenConstraintModal()}
+                                    className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition"
+                                >
+                                    <PlusIcon className="w-4 h-4" />
+                                    Atur Kuota Guru
+                                </button>
                             </div>
 
-                            <button
-                                onClick={() => setShowUnavailabilityModal(true)}
-                                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition"
-                            >
-                                <PlusIcon className="w-4 h-4" />
-                                Tambah Ketidaksediaan Guru
-                            </button>
-                        </div>
-
-                        {unavailabilities.length === 0 ? (
-                            <div className="bg-slate-50 dark:bg-slate-800/40 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl p-8 text-center space-y-2">
-                                <ClockIcon className="w-8 h-8 text-slate-400 mx-auto" />
-                                <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">Belum Ada Batasan Waktu Khusus</p>
-                                <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                                    Semua guru diasumsikan siap mengajar di semua slot jam KBM aktif sekolah.
-                                </p>
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                {unavailabilities.map((u) => {
-                                    const dayName = DAY_OPTIONS.find((d) => d.value === u.day)?.label || u.day;
-                                    return (
+                            {constraints.length === 0 ? (
+                                <div className="bg-slate-50 dark:bg-slate-800/40 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl p-8 text-center space-y-2">
+                                    <AdjustmentsHorizontalIcon className="w-8 h-8 text-slate-400 mx-auto" />
+                                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">Belum Ada Batasan Kuota Guru</p>
+                                    <p className="text-xs text-slate-400 max-w-md mx-auto">
+                                        Semua guru saat ini dapat dijadwalkan hingga 6 hari operasional tanpa batas hari maksimal. Klik tombol di atas untuk membatasi kuota hari mengajar guru.
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                    {constraints.map((c) => (
                                         <div
-                                            key={u.id}
+                                            key={c.id}
                                             className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs flex items-center justify-between"
                                         >
-                                            <div className="space-y-1">
-                                                <p className="font-bold text-sm text-slate-800 dark:text-slate-200">{u.teacher?.name}</p>
-                                                <div className="flex items-center gap-2 text-xs text-slate-500">
-                                                    <span className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 font-semibold">
-                                                        {dayName}
+                                            <div className="space-y-1.5">
+                                                <p className="font-bold text-sm text-slate-800 dark:text-slate-200">{c.teacher?.name}</p>
+                                                <div className="flex flex-wrap items-center gap-2 text-xs">
+                                                    <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 font-semibold">
+                                                        📅 {c.max_days_per_week ? `Maks. ${c.max_days_per_week} Hari / Minggu` : 'Hari Bebas'}
                                                     </span>
-                                                    <span>{u.slot_index === null ? 'Sepanjang Hari' : `Jam ke-${u.slot_index + 1}`}</span>
+                                                    {c.max_hours_per_day && (
+                                                        <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 font-semibold">
+                                                            ⏱️ Maks. {c.max_hours_per_day} JP / Hari
+                                                        </span>
+                                                    )}
                                                 </div>
-                                                {u.reason && <p className="text-[11px] text-slate-400 italic">Alasan: {u.reason}</p>}
                                             </div>
 
-                                            <button
-                                                onClick={() => handleDeleteUnavailability(u.id)}
-                                                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition"
-                                                title="Hapus Batasan"
-                                            >
-                                                <TrashIcon className="w-4 h-4" />
-                                            </button>
+                                            <div className="flex items-center gap-1">
+                                                <button
+                                                    onClick={() => handleOpenConstraintModal(c)}
+                                                    className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-lg transition"
+                                                    title="Ubah Kuota"
+                                                >
+                                                    <PencilSquareIcon className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteConstraint(c.id)}
+                                                    className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition"
+                                                    title="Hapus Batasan"
+                                                >
+                                                    <TrashIcon className="w-4 h-4" />
+                                                </button>
+                                            </div>
                                         </div>
-                                    );
-                                })}
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* BAGIAN 2: JADWAL GURU BERHALANGAN / WAKTU KOSONG */}
+                        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-6">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <ClockIcon className="w-5 h-5 text-amber-500" />
+                                        <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Waktu & Hari Kosong Guru (Unavailability)</h3>
+                                    </div>
+                                    <p className="text-xs text-slate-500 mt-1">
+                                        Tentukan hari atau jam tertentu di mana seorang guru berhalangan hadir (misal izin hari Jumat, atau hanya bisa jam siang).
+                                    </p>
+                                </div>
+
+                                <button
+                                    onClick={() => setShowUnavailabilityModal(true)}
+                                    className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl bg-amber-600 hover:bg-amber-700 text-white shadow-sm transition"
+                                >
+                                    <PlusIcon className="w-4 h-4" />
+                                    Tambah Waktu Kosong Guru
+                                </button>
                             </div>
-                        )}
+
+                            {unavailabilities.length === 0 ? (
+                                <div className="bg-slate-50 dark:bg-slate-800/40 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl p-8 text-center space-y-2">
+                                    <ClockIcon className="w-8 h-8 text-slate-400 mx-auto" />
+                                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">Belum Ada Waktu Khusus Berhalangan</p>
+                                    <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                                        Semua guru diasumsikan siap mengajar di semua slot jam KBM aktif sekolah.
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                    {unavailabilities.map((u) => {
+                                        const dayName = DAY_OPTIONS.find((d) => d.value === u.day)?.label || u.day;
+                                        return (
+                                            <div
+                                                key={u.id}
+                                                className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs flex items-center justify-between"
+                                            >
+                                                <div className="space-y-1">
+                                                    <p className="font-bold text-sm text-slate-800 dark:text-slate-200">{u.teacher?.name}</p>
+                                                    <div className="flex items-center gap-2 text-xs text-slate-500">
+                                                        <span className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 font-semibold">
+                                                            {dayName}
+                                                        </span>
+                                                        <span>{u.slot_index === null ? 'Sepanjang Hari' : `Jam ke-${u.slot_index + 1}`}</span>
+                                                    </div>
+                                                    {u.reason && <p className="text-[11px] text-slate-400 italic">Alasan: {u.reason}</p>}
+                                                </div>
+
+                                                <button
+                                                    onClick={() => handleDeleteUnavailability(u.id)}
+                                                    className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition"
+                                                    title="Hapus Batasan"
+                                                >
+                                                    <TrashIcon className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 )}
             </div>
@@ -1444,6 +1653,128 @@ export default function ScheduleGeneratorIndex({
                     </div>
                 </div>
             )}
+
+            {/* MODAL: ATUR KUOTA HARI & BEBAN GURU */}
+            {showConstraintModal && (
+                <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
+                        <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                            <div className="flex items-center gap-2.5">
+                                <div className="w-9 h-9 rounded-xl bg-indigo-100 dark:bg-indigo-950/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                                    <AdjustmentsHorizontalIcon className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-base text-slate-800 dark:text-slate-100">
+                                        {editingConstraint ? 'Ubah Kuota Guru' : 'Atur Kuota Mengajar Guru'}
+                                    </h3>
+                                    <p className="text-[11px] text-slate-400">Batasan hari hadir dan beban JP harian</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setShowConstraintModal(false)} className="text-slate-400 hover:text-slate-600">
+                                <XMarkIcon className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSaveConstraint} className="space-y-4 text-xs">
+                            <div>
+                                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                    Pilih Guru
+                                </label>
+                                <select
+                                    value={constraintForm.data.teacher_id}
+                                    onChange={(e) => constraintForm.setData('teacher_id', Number(e.target.value))}
+                                    className="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 py-2 px-3 focus:ring-indigo-500"
+                                    required
+                                    disabled={editingConstraint !== null}
+                                >
+                                    {teachers.map((t) => (
+                                        <option key={t.id} value={t.id}>
+                                            {t.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                    Maksimal Hari Mengajar per Minggu
+                                </label>
+                                <select
+                                    value={constraintForm.data.max_days_per_week}
+                                    onChange={(e) => constraintForm.setData('max_days_per_week', e.target.value)}
+                                    className="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 py-2 px-3 focus:ring-indigo-500"
+                                >
+                                    <option value="">Tidak Dibatasi (Bebas 1-6 Hari)</option>
+                                    <option value="1">Maksimal 1 Hari / Minggu</option>
+                                    <option value="2">Maksimal 2 Hari / Minggu</option>
+                                    <option value="3">Maksimal 3 Hari / Minggu</option>
+                                    <option value="4">Maksimal 4 Hari / Minggu</option>
+                                    <option value="5">Maksimal 5 Hari / Minggu</option>
+                                    <option value="6">Maksimal 6 Hari / Minggu</option>
+                                </select>
+                                <p className="text-[11px] text-slate-400 mt-1">
+                                    Membatasi solver agar guru ini hanya dijadwalkan hadir maksimal sekian hari dalam seminggu.
+                                </p>
+                            </div>
+
+                            <div>
+                                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                    Maksimal Beban JP per Hari (Opsional)
+                                </label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    max="12"
+                                    value={constraintForm.data.max_hours_per_day}
+                                    onChange={(e) => constraintForm.setData('max_hours_per_day', e.target.value)}
+                                    placeholder="Contoh: 6 (Kosongkan jika bebas)"
+                                    className="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 py-2 px-3 focus:ring-indigo-500"
+                                />
+                                <p className="text-[11px] text-slate-400 mt-1">
+                                    Batas total jam pelajaran yang boleh diajar oleh guru ini dalam satu hari.
+                                </p>
+                            </div>
+
+                            <div className="flex justify-end gap-2 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowConstraintModal(false)}
+                                    className="px-4 py-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                                >
+                                    Batal
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={constraintForm.processing}
+                                    className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition shadow-sm"
+                                >
+                                    {constraintForm.processing ? 'Menyimpan...' : 'Simpan Batasan'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* PRINT STYLES */}
+            <style>{`
+                @media print {
+                    nav, header, aside, .no-print, [role="navigation"] {
+                        display: none !important;
+                    }
+                    body {
+                        background: white !important;
+                        color: black !important;
+                    }
+                    #printable-schedule-area {
+                        border: none !important;
+                        box-shadow: none !important;
+                        padding: 0 !important;
+                        margin: 0 !important;
+                        width: 100% !important;
+                    }
+                }
+            `}</style>
         </AuthenticatedLayout>
     );
 }
