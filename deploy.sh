@@ -74,54 +74,61 @@ echo "$LOG_PREFIX 🗄️  Menjalankan migrasi database..."
 /www/server/php/83/bin/php artisan migrate --force 2>&1 || die "Gagal menjalankan migrasi database"
 
 # 5. Build Aset Frontend (React/Vite)
-echo "$LOG_PREFIX 🏗️  Membangun aset frontend (npm run build)..."
+# Cek apakah aset frontend pre-built (public/build) sudah ada dan telah di-commit ke Git.
+# Jika sudah ada, lewati proses npm install & build di server untuk mencegah lonjakan CPU & 502 Bad Gateway!
+if [ -f "$APP_DIR/public/build/manifest.json" ]; then
+    echo "$LOG_PREFIX ⏩ Aset frontend pre-built ditemukan (public/build/manifest.json)."
+    echo "$LOG_PREFIX ⚡ Melewati npm run build di server untuk menjaga stabilitas & mencegah downtime website tetangga."
+else
+    echo "$LOG_PREFIX 🏗️  Aset pre-built tidak ditemukan, membangun aset frontend di server (npm run build)..."
 
-# Auto-detect npm di aaPanel / nvm
-NPM_BIN=""
+    # Auto-detect npm di aaPanel / nvm
+    NPM_BIN=""
 
-# Coba load nvm jika tersedia
-if [ -f "$HOME/.nvm/nvm.sh" ]; then
-    export NVM_DIR="$HOME/.nvm"
-    # shellcheck disable=SC1090
-    . "$NVM_DIR/nvm.sh" --no-use 2>/dev/null
-    NPM_BIN="$(nvm which current 2>/dev/null | sed 's|/node$|/npm|')"
-fi
+    # Coba load nvm jika tersedia
+    if [ -f "$HOME/.nvm/nvm.sh" ]; then
+        export NVM_DIR="$HOME/.nvm"
+        # shellcheck disable=SC1090
+        . "$NVM_DIR/nvm.sh" --no-use 2>/dev/null
+        NPM_BIN="$(nvm which current 2>/dev/null | sed 's|/node$|/npm|')"
+    fi
 
-# Fallback: cari npm di lokasi umum aaPanel & sistem
-if [ -z "$NPM_BIN" ] || [ ! -x "$NPM_BIN" ]; then
-    for candidate in \
-        /www/server/nodejs/v22*/bin/npm \
-        /www/server/nodejs/v20*/bin/npm \
-        /www/server/nodejs/v18*/bin/npm \
-        /www/server/nodejs/v16*/bin/npm \
-        /root/.nvm/versions/node/*/bin/npm \
-        /usr/local/bin/npm \
-        /usr/bin/npm; do
-        # Ekspand glob dan ambil yang pertama
-        for f in $candidate; do
-            if [ -x "$f" ]; then
-                NPM_BIN="$f"
-                break 2
-            fi
+    # Fallback: cari npm di lokasi umum aaPanel & sistem
+    if [ -z "$NPM_BIN" ] || [ ! -x "$NPM_BIN" ]; then
+        for candidate in \
+            /www/server/nodejs/v22*/bin/npm \
+            /www/server/nodejs/v20*/bin/npm \
+            /www/server/nodejs/v18*/bin/npm \
+            /www/server/nodejs/v16*/bin/npm \
+            /root/.nvm/versions/node/*/bin/npm \
+            /usr/local/bin/npm \
+            /usr/bin/npm; do
+            # Ekspand glob dan ambil yang pertama
+            for f in $candidate; do
+                if [ -x "$f" ]; then
+                    NPM_BIN="$f"
+                    break 2
+                fi
+            done
         done
-    done
+    fi
+
+    if [ -z "$NPM_BIN" ]; then
+        die "npm tidak ditemukan! Install Node.js di aaPanel dulu (Software Store → Node.js), lalu jalankan ulang deploy."
+    fi
+
+    echo "$LOG_PREFIX ✅ npm ditemukan: $NPM_BIN (versi: $("$NPM_BIN" --version 2>/dev/null))"
+
+    # Fix permission cache npm (sering jadi root-owned di aaPanel)
+    chown -R "$(id -u):$(id -g)" /www/server/nodejs/cache 2>/dev/null || true
+
+    # Gunakan env var npm_config_cache agar log & cache semuanya dialihkan ke /tmp
+    export npm_config_cache="/tmp/.npm-cache-salira"
+    mkdir -p "$npm_config_cache"
+
+    "$NPM_BIN" install --legacy-peer-deps 2>&1 || die "npm install GAGAL!"
+    "$NPM_BIN" run build 2>&1 || die "npm run build GAGAL! Cek output di atas untuk detail error."
 fi
-
-if [ -z "$NPM_BIN" ]; then
-    die "npm tidak ditemukan! Install Node.js di aaPanel dulu (Software Store → Node.js), lalu jalankan ulang deploy."
-fi
-
-echo "$LOG_PREFIX ✅ npm ditemukan: $NPM_BIN (versi: $("$NPM_BIN" --version 2>/dev/null))"
-
-# Fix permission cache npm (sering jadi root-owned di aaPanel)
-chown -R "$(id -u):$(id -g)" /www/server/nodejs/cache 2>/dev/null || true
-
-# Gunakan env var npm_config_cache agar log & cache semuanya dialihkan ke /tmp
-export npm_config_cache="/tmp/.npm-cache-salira"
-mkdir -p "$npm_config_cache"
-
-"$NPM_BIN" install --legacy-peer-deps 2>&1 || die "npm install GAGAL!"
-"$NPM_BIN" run build 2>&1 || die "npm run build GAGAL! Cek output di atas untuk detail error."
 
 
 # 6. Membersihkan Cache Laravel
