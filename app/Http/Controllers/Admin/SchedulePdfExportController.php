@@ -66,6 +66,17 @@ class SchedulePdfExportController extends Controller
         return $this->labMapping[$key] ?? null;
     }
 
+    private function matchDay($scheduleDay, $targetDay)
+    {
+        if ($scheduleDay instanceof \BackedEnum) {
+            return $scheduleDay->value === $targetDay;
+        }
+        if (is_string($scheduleDay)) {
+            return $scheduleDay === $targetDay;
+        }
+        return false;
+    }
+
     private function getCommonData()
     {
         $lessonHours = json_decode(Setting::get('lesson_hours_by_day', '{}'), true) ?: [];
@@ -142,7 +153,7 @@ class SchedulePdfExportController extends Controller
             $classSchedules = $allSchedules->where('class_id', $class->id);
             foreach ($activeDays as $day) {
                 $daySchedules = $classSchedules->filter(function ($s) use ($day) {
-                    return $s->day?->value === $day || (string)$s->day === $day;
+                    return $this->matchDay($s->day, $day);
                 });
                 $covered = [];
 
@@ -230,7 +241,7 @@ class SchedulePdfExportController extends Controller
             $teacherSchedules = $allSchedules->where('teacher_id', $teacher->id);
             foreach ($activeDays as $day) {
                 $daySchedules = $teacherSchedules->filter(function ($s) use ($day) {
-                    return $s->day?->value === $day || (string)$s->day === $day;
+                    return $this->matchDay($s->day, $day);
                 });
                 $covered = [];
 
@@ -315,8 +326,7 @@ class SchedulePdfExportController extends Controller
         foreach ($labs as $labName) {
             foreach ($activeDays as $day) {
                 $daySchedules = $allSchedules->filter(function ($s) use ($day, $labName) {
-                    $dayMatch = ($s->day?->value === $day || (string)$s->day === $day);
-                    if (!$dayMatch) return false;
+                    if (!$this->matchDay($s->day, $day)) return false;
                     $className = $s->academicClass->name ?? '';
                     $room = $this->getRoom($className, $s->subject);
                     return $room === $labName;
@@ -407,8 +417,7 @@ class SchedulePdfExportController extends Controller
         foreach ($daysToExport as $day) {
             foreach ($classes as $class) {
                 $dayClassSchedules = $allSchedules->filter(function ($s) use ($day, $class) {
-                    $dayMatch = ($s->day?->value === $day || (string)$s->day === $day);
-                    return $dayMatch && $s->class_id == $class->id;
+                    return $this->matchDay($s->day, $day) && $s->class_id == $class->id;
                 });
 
                 $covered = [];
