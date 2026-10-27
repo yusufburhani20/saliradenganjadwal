@@ -207,4 +207,33 @@ class ScheduleGeneratorController extends Controller
             'message' => "Sebanyak {$saved} jadwal pelajaran resmi berhasil diterapkan dan tersimpan ke sistem!",
         ]);
     }
+
+    public function importAsc(Request $request, \App\Services\AscTimetableImporterService $importer)
+    {
+        $request->validate([
+            'xml_file' => 'required|file|max:10240',
+            'scope' => 'nullable|string|in:smk,all',
+            'apply_schedules' => 'nullable',
+        ], [
+            'xml_file.required' => 'File XML aSc TimeTables wajib diunggah.',
+            'xml_file.max' => 'Ukuran file maksimal 10 MB.',
+        ]);
+
+        $scope = $request->input('scope', 'smk');
+        $applySchedules = $request->boolean('apply_schedules', true);
+
+        $xmlContent = file_get_contents($request->file('xml_file')->getRealPath());
+        $result = $importer->import($xmlContent, $scope, $applySchedules);
+
+        if (!$result['success']) {
+            return back()->with('error', $result['message']);
+        }
+
+        $stats = $result['stats'];
+        $msg = "Import aSc TimeTables (" . $stats['scope'] . ") berhasil! "
+            . "{$stats['teachers_count']} Guru, {$stats['subjects_count']} Mapel, "
+            . "{$stats['assignments_count']} Alokasi SKBM, dan {$stats['schedules_count']} Jadwal Resmi telah disinkronkan.";
+
+        return back()->with('success', $msg);
+    }
 }

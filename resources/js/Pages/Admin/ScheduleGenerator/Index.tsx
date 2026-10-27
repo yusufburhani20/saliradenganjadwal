@@ -19,6 +19,8 @@ import {
     CheckBadgeIcon,
     PencilSquareIcon,
     UserGroupIcon,
+    ArrowUpTrayIcon,
+    DocumentArrowUpIcon,
 } from '@heroicons/react/24/outline';
 
 interface AcademicClass {
@@ -135,6 +137,7 @@ export default function ScheduleGeneratorIndex({
     const [showBatchAssignModal, setShowBatchAssignModal] = useState(false);
     const [showUnavailabilityModal, setShowUnavailabilityModal] = useState(false);
     const [showApplyModal, setShowApplyModal] = useState(false);
+    const [showAscImportModal, setShowAscImportModal] = useState(false);
 
     // Generator state
     const [isGenerating, setIsGenerating] = useState(false);
@@ -176,6 +179,13 @@ export default function ScheduleGeneratorIndex({
         day: 'monday',
         slot_index: '',
         reason: '',
+    });
+
+    // aSc TimeTables XML Import Form
+    const ascImportForm = useForm({
+        xml_file: null as File | null,
+        scope: 'smk',
+        apply_schedules: true,
     });
 
     const handleSaveAssignment = (e: React.FormEvent) => {
@@ -260,6 +270,21 @@ export default function ScheduleGeneratorIndex({
         if (confirm('Hapus preferensi ketidaksediaan ini?')) {
             router.delete(route('admin.schedule-generator.unavailabilities.destroy', id));
         }
+    };
+
+    const handleAscImportSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!ascImportForm.data.xml_file) {
+            alert('Silakan pilih file XML aSc TimeTables terlebih dahulu.');
+            return;
+        }
+        ascImportForm.post(route('admin.schedule-generator.import-asc'), {
+            forceFormData: true,
+            onSuccess: () => {
+                setShowAscImportModal(false);
+                ascImportForm.reset();
+            },
+        });
     };
 
     // Run Automatic Scheduling Generator
@@ -357,6 +382,13 @@ export default function ScheduleGeneratorIndex({
                         </p>
                     </div>
                     <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setShowAscImportModal(true)}
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition"
+                        >
+                            <ArrowUpTrayIcon className="w-4 h-4" />
+                            Import aSc XML
+                        </button>
                         <button
                             onClick={() => router.visit(route('admin.schedules.index'))}
                             className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-medium rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition shadow-sm"
@@ -695,6 +727,14 @@ export default function ScheduleGeneratorIndex({
                                     title="Kosongkan seluruh alokasi"
                                 >
                                     <TrashIcon className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                    onClick={() => setShowAscImportModal(true)}
+                                    className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition shadow-xs"
+                                    title="Impor jadwal dan alokasi guru dari file XML aSc TimeTables"
+                                >
+                                    <ArrowUpTrayIcon className="w-3.5 h-3.5" />
+                                    Import aSc XML
                                 </button>
                                 <button
                                     onClick={() => {
@@ -1244,6 +1284,160 @@ export default function ScheduleGeneratorIndex({
                                     className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition shadow-sm"
                                 >
                                     Terapkan ke Semua Kelas
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL: IMPORT aSc TIMETABLES XML */}
+            {showAscImportModal && (
+                <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-4">
+                        <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                            <div className="flex items-center gap-2.5">
+                                <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-950/50 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                                    <DocumentArrowUpIcon className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-base text-slate-800 dark:text-slate-100">Import aSc TimeTables (XML)</h3>
+                                    <p className="text-[11px] text-slate-400">Sinkronisasi otomatis Guru, Mapel, SKBM, & Jadwal Resmi</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setShowAscImportModal(false)} className="text-slate-400 hover:text-slate-600">
+                                <XMarkIcon className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleAscImportSubmit} className="space-y-4 text-xs">
+                            {/* File Upload Box */}
+                            <div>
+                                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                                    Pilih File XML aSc TimeTables
+                                </label>
+                                <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-emerald-500 dark:hover:border-emerald-500 rounded-2xl p-5 text-center transition bg-slate-50/50 dark:bg-slate-800/30">
+                                    <input
+                                        type="file"
+                                        accept=".xml,text/xml"
+                                        onChange={(e) => {
+                                            if (e.target.files && e.target.files[0]) {
+                                                ascImportForm.setData('xml_file', e.target.files[0]);
+                                            }
+                                        }}
+                                        className="hidden"
+                                        id="asc_xml_file_input"
+                                        required
+                                    />
+                                    <label htmlFor="asc_xml_file_input" className="cursor-pointer block space-y-2">
+                                        <ArrowUpTrayIcon className="w-8 h-8 mx-auto text-emerald-600 dark:text-emerald-400" />
+                                        {ascImportForm.data.xml_file ? (
+                                            <div className="font-semibold text-emerald-700 dark:text-emerald-400">
+                                                ✓ {ascImportForm.data.xml_file.name} ({(ascImportForm.data.xml_file.size / 1024).toFixed(1)} KB)
+                                            </div>
+                                        ) : (
+                                            <div>
+                                                <p className="font-semibold text-slate-700 dark:text-slate-300">
+                                                    Klik untuk memilih file XML dari komputer
+                                                </p>
+                                                <p className="text-[11px] text-slate-400 mt-0.5">
+                                                    Hasil export aSc TimeTables (cth: 111.xml)
+                                                </p>
+                                            </div>
+                                        )}
+                                    </label>
+                                </div>
+                                {ascImportForm.errors.xml_file && (
+                                    <p className="text-rose-500 text-[11px] mt-1">{ascImportForm.errors.xml_file}</p>
+                                )}
+                            </div>
+
+                            {/* Scope Filter */}
+                            <div>
+                                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                                    Cakupan Impor (Scope)
+                                </label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <label className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition ${
+                                        ascImportForm.data.scope === 'smk'
+                                            ? 'border-emerald-500 bg-emerald-50/40 dark:bg-emerald-950/30'
+                                            : 'border-slate-200 dark:border-slate-700'
+                                    }`}>
+                                        <input
+                                            type="radio"
+                                            name="scope"
+                                            value="smk"
+                                            checked={ascImportForm.data.scope === 'smk'}
+                                            onChange={() => ascImportForm.setData('scope', 'smk')}
+                                            className="mt-0.5 text-emerald-600 focus:ring-emerald-500"
+                                        />
+                                        <div>
+                                            <span className="font-bold text-slate-800 dark:text-slate-200 block">Khusus SMK</span>
+                                            <span className="text-[10px] text-slate-500 leading-tight block mt-0.5">
+                                                Hanya kelas AKL & TJKT (Disarankan)
+                                            </span>
+                                        </div>
+                                    </label>
+
+                                    <label className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition ${
+                                        ascImportForm.data.scope === 'all'
+                                            ? 'border-emerald-500 bg-emerald-50/40 dark:bg-emerald-950/30'
+                                            : 'border-slate-200 dark:border-slate-700'
+                                    }`}>
+                                        <input
+                                            type="radio"
+                                            name="scope"
+                                            value="all"
+                                            checked={ascImportForm.data.scope === 'all'}
+                                            onChange={() => ascImportForm.setData('scope', 'all')}
+                                            className="mt-0.5 text-emerald-600 focus:ring-emerald-500"
+                                        />
+                                        <div>
+                                            <span className="font-bold text-slate-800 dark:text-slate-200 block">Seluruh Lembaga</span>
+                                            <span className="text-[10px] text-slate-500 leading-tight block mt-0.5">
+                                                Semua kelas (MTs, MA, & SMK)
+                                            </span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            {/* Checkbox Apply to Schedules */}
+                            <div className="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200/70 dark:border-slate-800">
+                                <label className="flex items-center gap-2.5 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={ascImportForm.data.apply_schedules}
+                                        onChange={(e) => ascImportForm.setData('apply_schedules', e.target.checked)}
+                                        className="rounded border-slate-300 dark:border-slate-700 text-emerald-600 focus:ring-emerald-500"
+                                    />
+                                    <div>
+                                        <span className="font-semibold text-slate-800 dark:text-slate-200 block">
+                                            Terapkan langsung ke Jadwal Resmi (Schedules)
+                                        </span>
+                                        <span className="text-[10px] text-slate-400 block mt-0.5">
+                                            Jadwal hasil aSc langsung aktif di menu KBM, presensi guru & siswa
+                                        </span>
+                                    </div>
+                                </label>
+                            </div>
+
+                            {/* Buttons */}
+                            <div className="flex justify-end gap-2 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowAscImportModal(false)}
+                                    className="px-4 py-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                                >
+                                    Batal
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={ascImportForm.processing}
+                                    className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition shadow-sm flex items-center gap-2"
+                                >
+                                    <ArrowUpTrayIcon className={`w-4 h-4 ${ascImportForm.processing ? 'animate-bounce' : ''}`} />
+                                    {ascImportForm.processing ? 'Mengimpor Data...' : 'Mulai Impor Sekarang'}
                                 </button>
                             </div>
                         </form>
