@@ -15,6 +15,9 @@ import {
     PrinterIcon,
     ArrowDownTrayIcon,
     ChevronDownIcon,
+    ComputerDesktopIcon,
+    ClipboardDocumentListIcon,
+    ArrowTopRightOnSquareIcon,
 } from '@heroicons/react/24/outline';
 
 interface AcademicClass {
@@ -116,6 +119,18 @@ export default function ScheduleIndex({
     const [isExportModalOpen, setIsExportModalOpen] = useState(false);
     const [isPrintModalOpen, setIsPrintModalOpen]   = useState(false);
     const [printMode, setPrintMode]                 = useState<'table' | 'class' | 'teacher'>('table');
+
+    // Official aSc PDF export filters
+    const [selectedTeacherForPdf, setSelectedTeacherForPdf] = useState<string>('');
+    const [selectedClassForPdf, setSelectedClassForPdf] = useState<string>('');
+    const [selectedLabForPdf, setSelectedLabForPdf] = useState<string>('');
+    const [selectedDayForPdf, setSelectedDayForPdf] = useState<string>('');
+
+    React.useEffect(() => {
+        if (typeof window !== 'undefined' && window.location.search.includes('openExport=pdf')) {
+            setIsPrintModalOpen(true);
+        }
+    }, []);
 
     const { data, setData, post, put, reset, processing, errors } = useForm({
         class_id:   '',
@@ -844,16 +859,16 @@ export default function ScheduleIndex({
 
             {/* MODAL PILIHAN CETAK / PDF */}
             {isPrintModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-                    <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 max-w-md w-full shadow-2xl border border-gray-100 dark:border-gray-700 space-y-5">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
+                    <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 max-w-2xl w-full shadow-2xl border border-gray-100 dark:border-gray-700 space-y-5 my-8 max-h-[90vh] overflow-y-auto">
                         <div className="flex items-center justify-between border-b dark:border-gray-700 pb-3">
                             <div className="flex items-center gap-2">
-                                <div className="p-2 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
-                                    <PrinterIcon className="w-5 h-5" />
+                                <div className="p-2 rounded-xl bg-primary/10 text-primary">
+                                    <PrinterIcon className="w-6 h-6" />
                                 </div>
                                 <div>
-                                    <h3 className="font-bold text-gray-900 dark:text-white text-base">Pilih Format Cetak / PDF</h3>
-                                    <p className="text-xs text-gray-500">Membuka dialog print browser untuk cetak atau simpan PDF</p>
+                                    <h3 className="font-bold text-gray-900 dark:text-white text-lg">Ekspor PDF & Cetak Jadwal</h3>
+                                    <p className="text-xs text-gray-500">Unduh PDF resmi format aSc Timetables atau cetak langsung via browser</p>
                                 </div>
                             </div>
                             <button onClick={() => setIsPrintModalOpen(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
@@ -861,60 +876,202 @@ export default function ScheduleIndex({
                             </button>
                         </div>
 
+                        {/* SECTION 1: 4 FORMAT RESMI aSc TIMETABLES */}
                         <div className="space-y-3">
-                            {/* Cetak Per Kelas */}
-                            <button
-                                onClick={() => triggerPrint('class')}
-                                className="w-full text-left p-4 rounded-2xl border border-gray-200 dark:border-gray-700 hover:border-primary dark:hover:border-primary hover:bg-indigo-50/30 dark:hover:bg-indigo-950/20 transition group flex items-start gap-3.5"
-                            >
-                                <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 mt-0.5 group-hover:bg-primary group-hover:text-white transition">
-                                    <AcademicCapIcon className="w-5 h-5" />
-                                </div>
-                                <div className="flex-1">
-                                    <h4 className="font-bold text-sm text-gray-900 dark:text-white group-hover:text-primary">
-                                        Cetak Jadwal Per Kelas (Format Dinding/Rombel)
-                                    </h4>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">
-                                        Mencetak lembar jadwal masing-masing kelas dengan kop resmi dan kolom tanda tangan (page-break tiap kelas).
-                                    </p>
-                                </div>
-                            </button>
+                            <div className="flex items-center gap-2">
+                                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                                    Format Resmi aSc Timetables
+                                </span>
+                                <span className="text-xs text-gray-400">Layout Landscape Letter rapi & cell-merging</span>
+                            </div>
 
-                            {/* Cetak Per Guru */}
-                            <button
-                                onClick={() => triggerPrint('teacher')}
-                                className="w-full text-left p-4 rounded-2xl border border-gray-200 dark:border-gray-700 hover:border-primary dark:hover:border-primary hover:bg-purple-50/30 dark:hover:bg-purple-950/20 transition group flex items-start gap-3.5"
-                            >
-                                <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 mt-0.5 group-hover:bg-primary group-hover:text-white transition">
-                                    <UserIcon className="w-5 h-5" />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                                {/* 1. PDF GURU */}
+                                <div className="p-4 rounded-2xl border border-gray-200 dark:border-gray-700 hover:border-purple-500 bg-purple-50/20 dark:bg-purple-950/10 flex flex-col justify-between space-y-3">
+                                    <div>
+                                        <div className="flex items-center justify-between mb-1.5">
+                                            <div className="flex items-center gap-2">
+                                                <div className="p-1.5 rounded-lg bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300">
+                                                    <UserIcon className="w-4 h-4" />
+                                                </div>
+                                                <h4 className="font-bold text-sm text-gray-900 dark:text-white">Jadwal Per Guru</h4>
+                                            </div>
+                                            <span className="text-[10px] font-semibold text-purple-600 bg-purple-100/80 px-2 py-0.5 rounded-md">65 Guru</span>
+                                        </div>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                                            1 lembar per guru lengkap dengan nama kelas & tag ruang lab.
+                                        </p>
+                                    </div>
+                                    <div className="space-y-2 pt-1 border-t border-purple-100 dark:border-purple-900/30">
+                                        <select
+                                            value={selectedTeacherForPdf}
+                                            onChange={e => setSelectedTeacherForPdf(e.target.value)}
+                                            className="w-full text-xs rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 py-1.5 px-2"
+                                        >
+                                            <option value="">Semua Guru (Semua Lembar)</option>
+                                            {teachersWithSchedules.map(t => (
+                                                <option key={t.id} value={String(t.id)}>{t.name}</option>
+                                            ))}
+                                        </select>
+                                        <a
+                                            href={`/admin/schedules/export-pdf?type=guru${selectedTeacherForPdf ? `&teacher_id=${selectedTeacherForPdf}` : ''}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold transition shadow-xs"
+                                        >
+                                            <ArrowDownTrayIcon className="w-3.5 h-3.5" />
+                                            <span>Unduh PDF Guru</span>
+                                        </a>
+                                    </div>
                                 </div>
-                                <div className="flex-1">
-                                    <h4 className="font-bold text-sm text-gray-900 dark:text-white group-hover:text-primary">
-                                        Cetak Jadwal Per Guru (Surat Tugas Mengajar)
-                                    </h4>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">
-                                        Mencetak lembar jadwal mengajar masing-masing guru lengkap dengan total jam dan tanda tangan kepala sekolah.
-                                    </p>
-                                </div>
-                            </button>
 
-                            {/* Cetak Tabel Standar */}
-                            <button
-                                onClick={() => triggerPrint('table')}
-                                className="w-full text-left p-4 rounded-2xl border border-gray-200 dark:border-gray-700 hover:border-primary dark:hover:border-primary hover:bg-slate-50 dark:hover:bg-slate-700/30 transition group flex items-start gap-3.5"
-                            >
-                                <div className="p-2 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 mt-0.5 group-hover:bg-primary group-hover:text-white transition">
-                                    <CalendarDaysIcon className="w-5 h-5" />
+                                {/* 2. PDF KELAS */}
+                                <div className="p-4 rounded-2xl border border-gray-200 dark:border-gray-700 hover:border-indigo-500 bg-indigo-50/20 dark:bg-indigo-950/10 flex flex-col justify-between space-y-3">
+                                    <div>
+                                        <div className="flex items-center justify-between mb-1.5">
+                                            <div className="flex items-center gap-2">
+                                                <div className="p-1.5 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300">
+                                                    <AcademicCapIcon className="w-4 h-4" />
+                                                </div>
+                                                <h4 className="font-bold text-sm text-gray-900 dark:text-white">Jadwal Per Kelas</h4>
+                                            </div>
+                                            <span className="text-[10px] font-semibold text-indigo-600 bg-indigo-100/80 px-2 py-0.5 rounded-md">28 Kelas</span>
+                                        </div>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                                            1 lembar per kelas rombel dengan nama mapel, guru pengampu & ruang.
+                                        </p>
+                                    </div>
+                                    <div className="space-y-2 pt-1 border-t border-indigo-100 dark:border-indigo-900/30">
+                                        <select
+                                            value={selectedClassForPdf}
+                                            onChange={e => setSelectedClassForPdf(e.target.value)}
+                                            className="w-full text-xs rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 py-1.5 px-2"
+                                        >
+                                            <option value="">Semua Kelas (Semua Lembar)</option>
+                                            {classesWithSchedules.map(c => (
+                                                <option key={c.id} value={String(c.id)}>{c.name}</option>
+                                            ))}
+                                        </select>
+                                        <a
+                                            href={`/admin/schedules/export-pdf?type=kelas${selectedClassForPdf ? `&class_id=${selectedClassForPdf}` : ''}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-xs"
+                                        >
+                                            <ArrowDownTrayIcon className="w-3.5 h-3.5" />
+                                            <span>Unduh PDF Kelas</span>
+                                        </a>
+                                    </div>
                                 </div>
-                                <div className="flex-1">
-                                    <h4 className="font-bold text-sm text-gray-900 dark:text-white group-hover:text-primary">
-                                        Cetak Tampilan Tabel Saat Ini
-                                    </h4>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">
-                                        Mencetak tabel jadwal apa adanya sesuai filter yang sedang aktif di layar.
-                                    </p>
+
+                                {/* 3. PDF LAB */}
+                                <div className="p-4 rounded-2xl border border-gray-200 dark:border-gray-700 hover:border-emerald-500 bg-emerald-50/20 dark:bg-emerald-950/10 flex flex-col justify-between space-y-3">
+                                    <div>
+                                        <div className="flex items-center justify-between mb-1.5">
+                                            <div className="flex items-center gap-2">
+                                                <div className="p-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300">
+                                                    <ComputerDesktopIcon className="w-4 h-4" />
+                                                </div>
+                                                <h4 className="font-bold text-sm text-gray-900 dark:text-white">Jadwal Ruang Lab</h4>
+                                            </div>
+                                            <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-100/80 px-2 py-0.5 rounded-md">3 Ruang Lab</span>
+                                        </div>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                                            1 lembar per lab: LAB 1, LAB 2, LAB TI untuk memantau okupansi lab komputer.
+                                        </p>
+                                    </div>
+                                    <div className="space-y-2 pt-1 border-t border-emerald-100 dark:border-emerald-900/30">
+                                        <select
+                                            value={selectedLabForPdf}
+                                            onChange={e => setSelectedLabForPdf(e.target.value)}
+                                            className="w-full text-xs rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 py-1.5 px-2"
+                                        >
+                                            <option value="">Semua Lab (LAB 1, 2, TI)</option>
+                                            <option value="LAB 1">LAB 1</option>
+                                            <option value="LAB 2">LAB 2</option>
+                                            <option value="LAB TI">LAB TI</option>
+                                        </select>
+                                        <a
+                                            href={`/admin/schedules/export-pdf?type=lab${selectedLabForPdf ? `&lab=${encodeURIComponent(selectedLabForPdf)}` : ''}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-xs"
+                                        >
+                                            <ArrowDownTrayIcon className="w-3.5 h-3.5" />
+                                            <span>Unduh PDF Lab</span>
+                                        </a>
+                                    </div>
                                 </div>
-                            </button>
+
+                                {/* 4. PDF PIKET */}
+                                <div className="p-4 rounded-2xl border border-gray-200 dark:border-gray-700 hover:border-amber-500 bg-amber-50/20 dark:bg-amber-950/10 flex flex-col justify-between space-y-3">
+                                    <div>
+                                        <div className="flex items-center justify-between mb-1.5">
+                                            <div className="flex items-center gap-2">
+                                                <div className="p-1.5 rounded-lg bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300">
+                                                    <ClipboardDocumentListIcon className="w-4 h-4" />
+                                                </div>
+                                                <h4 className="font-bold text-sm text-gray-900 dark:text-white">Jadwal Guru Piket</h4>
+                                            </div>
+                                            <span className="text-[10px] font-semibold text-amber-600 bg-amber-100/80 px-2 py-0.5 rounded-md">6 Hari Aktif</span>
+                                        </div>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                                            Master jadwal harian memuat 28 kelas (kolom) x 9 jam pelajaran (baris).
+                                        </p>
+                                    </div>
+                                    <div className="space-y-2 pt-1 border-t border-amber-100 dark:border-amber-900/30">
+                                        <select
+                                            value={selectedDayForPdf}
+                                            onChange={e => setSelectedDayForPdf(e.target.value)}
+                                            className="w-full text-xs rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 py-1.5 px-2"
+                                        >
+                                            <option value="">Semua Hari (Sabtu s/d Kamis)</option>
+                                            <option value="saturday">Sabtu</option>
+                                            <option value="sunday">Ahad</option>
+                                            <option value="monday">Senin</option>
+                                            <option value="tuesday">Selasa</option>
+                                            <option value="wednesday">Rabu</option>
+                                            <option value="thursday">Kamis</option>
+                                        </select>
+                                        <a
+                                            href={`/admin/schedules/export-pdf?type=piket${selectedDayForPdf ? `&day=${selectedDayForPdf}` : ''}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition shadow-xs"
+                                        >
+                                            <ArrowDownTrayIcon className="w-3.5 h-3.5" />
+                                            <span>Unduh PDF Piket</span>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* SECTION 2: BROWSER PRINT FALLBACK */}
+                        <div className="pt-2 border-t dark:border-gray-700 space-y-2">
+                            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">
+                                Opsi Alternatif: Cetak Cepat via Browser (Ctrl+P)
+                            </span>
+                            <div className="flex flex-wrap gap-2">
+                                <button
+                                    onClick={() => triggerPrint('class')}
+                                    className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                                >
+                                    Dialog Print: Per Kelas
+                                </button>
+                                <button
+                                    onClick={() => triggerPrint('teacher')}
+                                    className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                                >
+                                    Dialog Print: Per Guru
+                                </button>
+                                <button
+                                    onClick={() => triggerPrint('table')}
+                                    className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                                >
+                                    Dialog Print: Tabel Aktif
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
