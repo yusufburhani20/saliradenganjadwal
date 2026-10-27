@@ -60,10 +60,47 @@ class SchedulePdfExportController extends Controller
         'VI TJKT|Administrasi Sistem Jaringan' => 'LAB TI'
     ];
 
+    private function normalizeClassName($name)
+    {
+        $n = trim(str_replace([' PA', ' PI'], '', (string)$name));
+        if (str_starts_with($n, 'XII ')) {
+            return 'VI ' . substr($n, 4);
+        }
+        if (str_starts_with($n, 'XI ')) {
+            return 'V ' . substr($n, 3);
+        }
+        if (str_starts_with($n, 'X ')) {
+            return 'IV ' . substr($n, 2);
+        }
+        return $n;
+    }
+
     private function getRoom($className, $subject)
     {
-        $key = trim($className) . '|' . trim($subject);
-        return $this->labMapping[$key] ?? null;
+        $key = trim((string)$className) . '|' . trim((string)$subject);
+        if (isset($this->labMapping[$key])) {
+            return $this->labMapping[$key];
+        }
+
+        $normKey = $this->normalizeClassName($className) . '|' . trim((string)$subject);
+        if (isset($this->labMapping[$normKey])) {
+            return $this->labMapping[$normKey];
+        }
+
+        // Subject-based fallback
+        $subjMap = [
+            'Keamanan Jaringan' => 'LAB TI',
+            'Teknologi Jaringan Kabel dan Nirkabel' => 'LAB TI',
+            'Perencanaan dan Pengalamatan Jaringan' => 'LAB TI',
+            'Administrasi Sistem Jaringan' => 'LAB TI',
+            'Jaringan Dasar' => 'LAB TI',
+            'Sistem Komputer' => 'LAB TI',
+            'Spreadsheet' => 'LAB 2',
+            'Komputer Akuntansi' => 'LAB 2',
+            'Digital Marketing' => 'LAB 1',
+            'Design Grafis' => 'LAB 1',
+        ];
+        return $subjMap[trim((string)$subject)] ?? null;
     }
 
     private function matchDay($scheduleDay, $targetDay)
