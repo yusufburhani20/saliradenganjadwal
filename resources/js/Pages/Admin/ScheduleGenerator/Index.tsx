@@ -153,6 +153,7 @@ export default function ScheduleGeneratorIndex({
     const [editingConstraint, setEditingConstraint] = useState<TeacherConstraint | null>(null);
     const [showApplyModal, setShowApplyModal] = useState(false);
     const [showAscImportModal, setShowAscImportModal] = useState(false);
+    const [showExportModal, setShowExportModal] = useState(false);
 
     // Generator state
     const [isGenerating, setIsGenerating] = useState(false);
@@ -368,6 +369,130 @@ export default function ScheduleGeneratorIndex({
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        setShowExportModal(false);
+    };
+
+    const handleExportClassCsv = () => {
+        if (!generationResult || !generationResult.schedules || generationResult.schedules.length === 0) {
+            alert('Belum ada jadwal yang siap diekspor.');
+            return;
+        }
+
+        const dayLabelMap: Record<string, string> = {
+            monday: 'Senin',
+            tuesday: 'Selasa',
+            wednesday: 'Rabu',
+            thursday: 'Kamis',
+            friday: 'Jumat',
+            saturday: 'Sabtu',
+            sunday: 'Minggu',
+        };
+
+        const dayOrder: Record<string, number> = {
+            monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6, sunday: 7
+        };
+
+        const lines: string[] = [];
+        lines.push(`"JADWAL HASIL SIMULASI GENERATOR - PER KELAS"`);
+        lines.push(`"Tanggal: ${new Date().toLocaleDateString('id-ID')}"`);
+        lines.push('');
+
+        classes.forEach(cls => {
+            const items = generationResult.schedules
+                .filter(s => s.class_id === cls.id)
+                .sort((a, b) => (dayOrder[a.day] || 99) - (dayOrder[b.day] || 99) || a.start_slot - b.start_slot);
+
+            if (items.length > 0) {
+                lines.push(`"=== KELAS: ${cls.name.toUpperCase()} (Total: ${items.length} Sesi Pertemuan) ==="`);
+                lines.push('No,Hari,Jam Ke,Waktu Mulai,Waktu Selesai,Durasi,Mata Pelajaran,Guru Pengampu');
+                items.forEach((s, idx) => {
+                    lines.push([
+                        idx + 1,
+                        dayLabelMap[s.day] || s.day,
+                        `Jam ke-${s.start_slot + 1}${s.duration > 1 ? '-' + (s.start_slot + s.duration) : ''}`,
+                        s.start_time,
+                        s.end_time,
+                        `${s.duration} JP`,
+                        `"${(s.subject || '').replace(/"/g, '""')}"`,
+                        `"${(s.teacher_name || '').replace(/"/g, '""')}"`,
+                    ].join(','));
+                });
+                lines.push('');
+            }
+        });
+
+        const csvContent = '\uFEFF' + lines.join('\r\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `Simulasi_Jadwal_Per_Kelas_${new Date().toISOString().slice(0, 10)}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setShowExportModal(false);
+    };
+
+    const handleExportTeacherCsv = () => {
+        if (!generationResult || !generationResult.schedules || generationResult.schedules.length === 0) {
+            alert('Belum ada jadwal yang siap diekspor.');
+            return;
+        }
+
+        const dayLabelMap: Record<string, string> = {
+            monday: 'Senin',
+            tuesday: 'Selasa',
+            wednesday: 'Rabu',
+            thursday: 'Kamis',
+            friday: 'Jumat',
+            saturday: 'Sabtu',
+            sunday: 'Minggu',
+        };
+
+        const dayOrder: Record<string, number> = {
+            monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6, sunday: 7
+        };
+
+        const lines: string[] = [];
+        lines.push(`"JADWAL MENGAJAR HASIL SIMULASI - PER GURU"`);
+        lines.push(`"Tanggal: ${new Date().toLocaleDateString('id-ID')}"`);
+        lines.push('');
+
+        teachers.forEach(tch => {
+            const items = generationResult.schedules
+                .filter(s => s.teacher_id === tch.id)
+                .sort((a, b) => (dayOrder[a.day] || 99) - (dayOrder[b.day] || 99) || a.start_slot - b.start_slot);
+
+            if (items.length > 0) {
+                const totalJp = items.reduce((acc, curr) => acc + (curr.duration || 1), 0);
+                lines.push(`"=== GURU: ${tch.name.toUpperCase()} (Total Beban: ${totalJp} JP / ${items.length} Sesi) ==="`);
+                lines.push('No,Hari,Jam Ke,Waktu Mulai,Waktu Selesai,Durasi,Kelas,Mata Pelajaran');
+                items.forEach((s, idx) => {
+                    lines.push([
+                        idx + 1,
+                        dayLabelMap[s.day] || s.day,
+                        `Jam ke-${s.start_slot + 1}${s.duration > 1 ? '-' + (s.start_slot + s.duration) : ''}`,
+                        s.start_time,
+                        s.end_time,
+                        `${s.duration} JP`,
+                        `"${(s.class_name || '').replace(/"/g, '""')}"`,
+                        `"${(s.subject || '').replace(/"/g, '""')}"`,
+                    ].join(','));
+                });
+                lines.push('');
+            }
+        });
+
+        const csvContent = '\uFEFF' + lines.join('\r\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `Simulasi_Jadwal_Per_Guru_${new Date().toISOString().slice(0, 10)}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setShowExportModal(false);
     };
 
     const handlePrintSchedule = () => {
@@ -613,9 +738,9 @@ export default function ScheduleGeneratorIndex({
                                     {generationResult && generationResult.schedules.length > 0 && (
                                         <>
                                             <button
-                                                onClick={handleExportCsv}
+                                                onClick={() => setShowExportModal(true)}
                                                 className="inline-flex items-center justify-center gap-2 px-4 py-3.5 bg-white/10 hover:bg-white/20 text-white font-bold rounded-2xl shadow-lg transition active:scale-95 border border-white/20"
-                                                title="Download Jadwal dalam format file Excel / CSV"
+                                                title="Pilih Format Ekspor Excel (Per Kelas / Per Guru / Semua)"
                                             >
                                                 <ArrowDownTrayIcon className="w-5 h-5 text-emerald-400" />
                                                 Ekspor Excel
@@ -1752,6 +1877,84 @@ export default function ScheduleGeneratorIndex({
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL PILIHAN EKSPOR EXCEL GENERATOR */}
+            {showExportModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+                    <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-md w-full shadow-2xl border border-slate-100 dark:border-slate-800 space-y-5">
+                        <div className="flex items-center justify-between border-b dark:border-slate-800 pb-3">
+                            <div className="flex items-center gap-2">
+                                <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600">
+                                    <ArrowDownTrayIcon className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-slate-900 dark:text-white text-base">Pilih Format Ekspor Excel</h3>
+                                    <p className="text-xs text-slate-500">File spreadsheet (.csv) hasil simulasi otomatis</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setShowExportModal(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                                <XMarkIcon className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <div className="space-y-3">
+                            {/* Ekspor Per Kelas */}
+                            <button
+                                onClick={handleExportClassCsv}
+                                className="w-full text-left p-4 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition group flex items-start gap-3.5"
+                            >
+                                <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 mt-0.5 group-hover:bg-emerald-500 group-hover:text-white transition">
+                                    <AcademicCapIcon className="w-5 h-5" />
+                                </div>
+                                <div className="flex-1">
+                                    <h4 className="font-bold text-sm text-slate-900 dark:text-white group-hover:text-emerald-700 dark:group-hover:text-emerald-300">
+                                        Ekspor Jadwal Per Kelas
+                                    </h4>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
+                                        Data dikelompokkan dan dipisahkan per rombel kelas. Siap dibagikan ke siswa & wali kelas.
+                                    </p>
+                                </div>
+                            </button>
+
+                            {/* Ekspor Per Guru */}
+                            <button
+                                onClick={handleExportTeacherCsv}
+                                className="w-full text-left p-4 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition group flex items-start gap-3.5"
+                            >
+                                <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 mt-0.5 group-hover:bg-emerald-500 group-hover:text-white transition">
+                                    <UserIcon className="w-5 h-5" />
+                                </div>
+                                <div className="flex-1">
+                                    <h4 className="font-bold text-sm text-slate-900 dark:text-white group-hover:text-emerald-700 dark:group-hover:text-emerald-300">
+                                        Ekspor Jadwal Per Guru
+                                    </h4>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
+                                        Data dikelompokkan per guru lengkap dengan total JP beban mengajar masing-masing.
+                                    </p>
+                                </div>
+                            </button>
+
+                            {/* Ekspor Semua Jadwal Flat */}
+                            <button
+                                onClick={handleExportCsv}
+                                className="w-full text-left p-4 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition group flex items-start gap-3.5"
+                            >
+                                <div className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 mt-0.5 group-hover:bg-emerald-500 group-hover:text-white transition">
+                                    <CalendarDaysIcon className="w-5 h-5" />
+                                </div>
+                                <div className="flex-1">
+                                    <h4 className="font-bold text-sm text-slate-900 dark:text-white group-hover:text-emerald-700 dark:group-hover:text-emerald-300">
+                                        Ekspor Seluruh Sesi (Tabel Flat)
+                                    </h4>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
+                                        Format spreadsheet flat berisi seluruh baris hasil penempatan generator.
+                                    </p>
+                                </div>
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

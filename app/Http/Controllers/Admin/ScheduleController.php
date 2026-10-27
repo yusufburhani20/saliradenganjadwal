@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Schedule;
 use App\Models\AcademicClass;
 use App\Models\User;
+use App\Models\Setting;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -22,11 +23,15 @@ class ScheduleController extends Controller
         $teachers = User::whereHas('roles', fn($q) => $q->whereIn('name', ['Guru', 'Super Admin', 'Wali Kelas', 'Kepala Program', 'Kepala Sekolah']))
             ->orderBy('name')
             ->get(['id', 'name']);
+        $lessonHours = json_decode(Setting::get('lesson_hours_by_day', '{}'), true) ?: [];
+        $schoolName = Setting::get('school_name', 'SIM Salira');
 
         return Inertia::render('Admin/Schedules/Index', [
-            'schedules' => $schedules,
-            'classes'   => $classes,
-            'teachers'  => $teachers,
+            'schedules'    => $schedules,
+            'classes'      => $classes,
+            'teachers'     => $teachers,
+            'lesson_hours' => $lessonHours,
+            'school_name'  => $schoolName,
         ]);
     }
 
