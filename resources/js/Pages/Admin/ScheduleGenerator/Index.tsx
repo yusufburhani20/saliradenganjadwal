@@ -24,6 +24,11 @@ import {
     PrinterIcon,
     ArrowDownTrayIcon,
     AdjustmentsHorizontalIcon,
+    QuestionMarkCircleIcon,
+    LightBulbIcon,
+    ChevronRightIcon,
+    ChevronLeftIcon,
+    InformationCircleIcon,
 } from '@heroicons/react/24/outline';
 
 interface AcademicClass {
@@ -158,6 +163,8 @@ export default function ScheduleGeneratorIndex({
     const [showApplyModal, setShowApplyModal] = useState(false);
     const [showAscImportModal, setShowAscImportModal] = useState(false);
     const [showExportModal, setShowExportModal] = useState(false);
+    const [showTutorialModal, setShowTutorialModal] = useState(false);
+    const [tutorialStep, setTutorialStep] = useState(1);
 
     // Generator state
     const [isGenerating, setIsGenerating] = useState(false);
@@ -626,7 +633,18 @@ export default function ScheduleGeneratorIndex({
                             Sistem penjadwalan cerdas bebas bentrok (CSP Constraint Solver) terintegrasi langsung ke KBM SALIRA
                         </p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setTutorialStep(1);
+                                setShowTutorialModal(true);
+                            }}
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-sm transition active:scale-95 cursor-pointer"
+                        >
+                            <QuestionMarkCircleIcon className="w-4 h-4" />
+                            Tutorial & Panduan
+                        </button>
                         <button
                             onClick={() => setShowAscImportModal(true)}
                             className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition"
@@ -739,8 +757,19 @@ export default function ScheduleGeneratorIndex({
                                     </div>
                                     <h3 className="text-2xl font-black tracking-tight">Generate Seluruh Jadwal dalam Hitungan Detik</h3>
                                     <p className="text-slate-300 text-sm leading-relaxed">
-                                        Algoritma akan menempatkan seluruh jam mengajar guru ke dalam slot waktu hari aktif sekolah, memastikan 0 bentrok guru dan 0 bentrok kelas.
+                                        Algoritma cerdas akan menempatkan seluruh jam mengajar guru ke dalam slot waktu hari aktif sekolah, memastikan 0 bentrok guru, 0 bentrok kelas, dan 0 bentrok lab komputer.
                                     </p>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setTutorialStep(1);
+                                            setShowTutorialModal(true);
+                                        }}
+                                        className="inline-flex items-center gap-1.5 text-xs text-amber-300 hover:text-amber-200 underline underline-offset-4 font-semibold transition cursor-pointer"
+                                    >
+                                        <LightBulbIcon className="w-4 h-4" />
+                                        Pelajari Panduan & Cara Generate Jadwal Langkah Demi Langkah
+                                    </button>
                                 </div>
 
                                 <div className="flex flex-wrap items-stretch sm:items-center gap-2.5">
@@ -1623,6 +1652,269 @@ export default function ScheduleGeneratorIndex({
                                 <ArrowPathIcon className={`w-4 h-4 ${isApplying ? 'animate-spin' : ''}`} />
                                 {isApplying ? 'Menerapkan...' : 'Ya, Terapkan Sekarang'}
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL: TUTORIAL & PANDUAN LANGKAH DEMI LANGKAH */}
+            {showTutorialModal && (
+                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-2xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                        {/* Header */}
+                        <div className="p-5 sm:p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-gradient-to-r from-amber-50/60 via-orange-50/40 to-transparent dark:from-amber-950/30 dark:via-orange-950/20">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 text-white flex items-center justify-center shadow-md shadow-amber-500/20">
+                                    <LightBulbIcon className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-base sm:text-lg text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                                        Panduan Langkah Demi Langkah
+                                        <span className="px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300 rounded-full">
+                                            Tutorial
+                                        </span>
+                                    </h3>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                                        Cara menyusun jadwal pelajaran otomatis dari 0 hingga siap cetak
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setShowTutorialModal(false)}
+                                className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                            >
+                                <XMarkIcon className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        {/* Stepper Progress Bar */}
+                        <div className="px-4 sm:px-6 pt-3 pb-2 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                            <div className="flex items-center justify-between gap-1 overflow-x-auto pb-1 scrollbar-none">
+                                {[
+                                    { num: 1, title: '1. Jam & Hari' },
+                                    { num: 2, title: '2. Lab / Ruang' },
+                                    { num: 3, title: '3. Alokasi SKBM' },
+                                    { num: 4, title: '4. Batasan Guru' },
+                                    { num: 5, title: '5. Auto Generate' },
+                                    { num: 6, title: '6. Terapkan' },
+                                ].map((s) => (
+                                    <button
+                                        key={s.num}
+                                        type="button"
+                                        onClick={() => setTutorialStep(s.num)}
+                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
+                                            tutorialStep === s.num
+                                                ? 'bg-indigo-600 text-white shadow-sm'
+                                                : tutorialStep > s.num
+                                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                                                : 'text-slate-500 hover:bg-slate-200/60 dark:hover:bg-slate-800'
+                                        }`}
+                                    >
+                                        <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${
+                                            tutorialStep === s.num
+                                                ? 'bg-white text-indigo-600 font-extrabold'
+                                                : tutorialStep > s.num
+                                                ? 'bg-emerald-600 text-white'
+                                                : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                                        }`}>
+                                            {tutorialStep > s.num ? '✓' : s.num}
+                                        </span>
+                                        <span>{s.title}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Step Details Body */}
+                        <div className="p-5 sm:p-6 overflow-y-auto space-y-4 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                            {tutorialStep === 1 && (
+                                <div className="space-y-3.5">
+                                    <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-bold text-sm">
+                                        <ClockIcon className="w-5 h-5" />
+                                        <span>Langkah 1: Atur Hari Aktif & Jam Pelajaran Sekolah</span>
+                                    </div>
+                                    <p>
+                                        Sebelum sistem bisa menempatkan jadwal, sistem harus mengetahui <strong>hari apa saja sekolah aktif</strong> dan <strong>jam berapa saja jam ke-1 sampai jam terakhir</strong>.
+                                    </p>
+                                    <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2">
+                                        <div className="font-semibold text-slate-800 dark:text-slate-200">Cara Pengaturannya:</div>
+                                        <ol className="list-decimal list-inside space-y-1.5 text-slate-600 dark:text-slate-400">
+                                            <li>Buka menu <strong>Pengaturan Jam Pelajaran</strong> (di sidebar navigasi sebelah kiri bawah).</li>
+                                            <li>Centang hari-hari operasional KBM (misal: <strong>Sabtu, Ahad, Senin, Selasa, Rabu, Kamis</strong>). Kosongkan hari Jumat jika libur pondok/sekolah.</li>
+                                            <li>Tentukan jam mulai & selesai per slot (misal: Jam ke-1: 07:30 - 08:10, hingga Jam ke-9: 14:25 - 15:00).</li>
+                                            <li>Klik <strong>Simpan Pengaturan Jam</strong>.</li>
+                                        </ol>
+                                    </div>
+                                    <div className="p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-xl text-blue-800 dark:text-blue-300 text-[11px] flex gap-2">
+                                        <InformationCircleIcon className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600 dark:text-blue-400" />
+                                        <span>
+                                            <strong>Kapasitas Mingguan:</strong> Jumlah jam per hari (misal 9 JP x 6 hari = 54 JP per minggu) adalah batas maksimal jam belajar mingguan yang bisa ditampung tiap rombel kelas.
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {tutorialStep === 2 && (
+                                <div className="space-y-3.5">
+                                    <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-bold text-sm">
+                                        <AcademicCapIcon className="w-5 h-5" />
+                                        <span>Langkah 2: Siapkan Data Ruangan / Laboratorium Komputer</span>
+                                    </div>
+                                    <p>
+                                        Jika sekolah Anda memiliki mata pelajaran praktik yang membutuhkan <strong>Lab Komputer</strong> (seperti mapel TKJ/RPL/AKL), pastikan daftar lab sudah tercatat di sistem.
+                                    </p>
+                                    <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2">
+                                        <div className="font-semibold text-slate-800 dark:text-slate-200">Dua Cara Menyiapkan Ruangan Lab:</div>
+                                        <ul className="list-disc list-inside space-y-1.5 text-slate-600 dark:text-slate-400">
+                                            <li><strong>Cara Manual:</strong> Buka menu <em>Lab Komputer & PC</em> di sidebar, lalu klik <em>+ Tambah Ruang Lab</em> (ketik: <code>LAB 1</code>, <code>LAB 2</code>, atau <code>LAB TI</code>).</li>
+                                            <li><strong>Cara Otomatis:</strong> Jika Anda mengimpor file jadwal dari aSc TimeTables (XML), seluruh ruangan lab akan <strong>otomatis terdaftar</strong> ke sistem tanpa perlu Anda ketik manual.</li>
+                                        </ul>
+                                    </div>
+                                    <div className="p-3 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-xl text-emerald-800 dark:text-emerald-300 text-[11px] flex gap-2">
+                                        <CheckCircleIcon className="w-4 h-4 flex-shrink-0 mt-0.5 text-emerald-600 dark:text-emerald-400" />
+                                        <span>
+                                            <strong>Bebas Bentrok Lab:</strong> Generator otomatis Salira dilengkapi pendeteksi bentrok ruangan sehingga <strong>dua kelas berbeda tidak akan pernah bertabrakan</strong> di lab yang sama pada hari dan jam yang sama!
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {tutorialStep === 3 && (
+                                <div className="space-y-3.5">
+                                    <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-bold text-sm">
+                                        <BookOpenIcon className="w-5 h-5" />
+                                        <span>Langkah 3: Input Alokasi Mengajar Guru (SKBM)</span>
+                                    </div>
+                                    <p>
+                                        SKBM adalah daftar beban mengajar: <strong>Kelas apa</strong>, belajar <strong>Mapel apa</strong>, diajar oleh <strong>Guru siapa</strong>, dan berapa <strong>Jam (JP) per minggu</strong>.
+                                    </p>
+                                    <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2">
+                                        <div className="font-semibold text-slate-800 dark:text-slate-200">Cara Pengisian di Tab "2. Alokasi Mengajar (SKBM)":</div>
+                                        <ul className="list-disc list-inside space-y-1.5 text-slate-600 dark:text-slate-400">
+                                            <li><strong>Opsi 1 (Paling Cepat):</strong> Klik tombol hijau <strong>Import aSc XML</strong>. Seluruh alokasi mapel, guru, jam, dan lab akan langsung terisi otomatis.</li>
+                                            <li><strong>Opsi 2 (Manual):</strong> Klik <strong>+ Tambah Alokasi</strong>:
+                                                <ul className="list-none pl-4 pt-1 space-y-1 text-slate-500 dark:text-slate-400">
+                                                    <li>• Pilih <strong>Kelas</strong> & <strong>Mata Pelajaran</strong>.</li>
+                                                    <li>• Pilih <strong>Guru Pengampu</strong>.</li>
+                                                    <li>• 👉 <strong>Ruangan / Lab Khusus (Opsional)</strong>: Pilih <code>LAB TI</code>, <code>LAB 1</code>, dll. jika mapel ini wajib di lab komputer.</li>
+                                                    <li>• Tentukan <strong>Total JP/Minggu</strong> (misal 2, 3, atau 4 JP).</li>
+                                                    <li>• Tentukan <strong>Maks JP/Pertemuan</strong> (misal 4 JP untuk mapel lab 1x pertemuan, atau 2 JP untuk mapel umum).</li>
+                                                    <li>• (Opsional) <strong>Kondisi Khusus Hari</strong>: Centang hari jika guru hanya bersedia mengajar di hari tertentu (misal: hanya Sabtu & Minggu).</li>
+                                                </ul>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            )}
+
+                            {tutorialStep === 4 && (
+                                <div className="space-y-3.5">
+                                    <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-bold text-sm">
+                                        <UserGroupIcon className="w-5 h-5" />
+                                        <span>Langkah 4: Tetapkan Batasan & Preferensi Guru (Opsional)</span>
+                                    </div>
+                                    <p>
+                                        Langkah ini digunakan jika ada guru yang memiliki tugas dinas luar, kuliah lanjutan, atau guru tamu paruh waktu.
+                                    </p>
+                                    <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2">
+                                        <div className="font-semibold text-slate-800 dark:text-slate-200">Masuk ke Tab "3. Batasan & Preferensi Guru":</div>
+                                        <ul className="list-disc list-inside space-y-1.5 text-slate-600 dark:text-slate-400">
+                                            <li><strong>Jam Berhalangan (Unavailability):</strong> Daftarkan hari dan jam tertentu ketika guru tidak bisa hadir (misal: Hari Senin jam 1–4). Generator <strong>tidak akan pernah</strong> menempatkan beliau pada jam tersebut.</li>
+                                            <li><strong>Maksimal Hari Mengajar:</strong> Tetapkan batas mengajar (misal: Dosen/guru tamu maksimal 3 hari per minggu).</li>
+                                            <li><strong>Maksimal JP Per Hari:</strong> Batasi beban agar guru tidak kelelahan (misal: maksimal 6 JP per hari).</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            )}
+
+                            {tutorialStep === 5 && (
+                                <div className="space-y-3.5">
+                                    <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-bold text-sm">
+                                        <SparklesIcon className="w-5 h-5" />
+                                        <span>Langkah 5: Klik "Jalankan Auto Generator" (1 Klik)</span>
+                                    </div>
+                                    <p>
+                                        Semua persiapan telah selesai! Sekarang saatnya mesin algoritma menyusun jadwal secara otomatis.
+                                    </p>
+                                    <div className="p-3.5 bg-gradient-to-r from-indigo-50 to-emerald-50 dark:from-indigo-950/40 dark:to-emerald-950/40 rounded-2xl border border-indigo-200 dark:border-indigo-800 space-y-2">
+                                        <div className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                                            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                                            Eksekusi di Tab "1. Generator & Simulasi Jadwal":
+                                        </div>
+                                        <ol className="list-decimal list-inside space-y-1.5 text-slate-700 dark:text-slate-300">
+                                            <li>Buka Tab <strong>1. Generator & Simulasi Jadwal</strong>.</li>
+                                            <li>Klik tombol hijau besar: <strong>"Jalankan Auto Generator"</strong>.</li>
+                                            <li>Dalam waktu <strong>kurang dari 2 detik</strong>, mesin CSP Solver cerdas akan menempatkan seluruh sesi pelajaran dengan jaminan <strong>0 bentrok guru, 0 bentrok kelas, dan 0 bentrok lab komputer</strong>.</li>
+                                        </ol>
+                                    </div>
+                                </div>
+                            )}
+
+                            {tutorialStep === 6 && (
+                                <div className="space-y-3.5">
+                                    <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-bold text-sm">
+                                        <CheckCircleIcon className="w-5 h-5" />
+                                        <span>Langkah 6: Review Matriks & Terapkan ke Jadwal Resmi</span>
+                                    </div>
+                                    <p>
+                                        Setelah generate selesai, pratinjau matriks jadwal akan langsung tampil di bawah banner.
+                                    </p>
+                                    <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2">
+                                        <div className="font-semibold text-slate-800 dark:text-slate-200">Cara Memeriksa & Mengaktifkan:</div>
+                                        <ul className="list-disc list-inside space-y-1.5 text-slate-600 dark:text-slate-400">
+                                            <li>Gunakan 3 mode tampilan di atas matriks:
+                                                <ul className="list-none pl-4 pt-1 space-y-0.5 text-slate-500 dark:text-slate-400">
+                                                    <li>• <strong>Tampilan Per Kelas</strong>: Periksa kerapatan jadwal tiap rombel kelas.</li>
+                                                    <li>• <strong>Tampilan Per Guru</strong>: Pastikan jadwal guru kompak dan tidak terpencar.</li>
+                                                    <li>• <strong>Tampilan Per Lab/Ruang</strong>: Lihat okupansi ruangan <code>LAB 1</code>, <code>LAB 2</code>, <code>LAB TI</code>.</li>
+                                                </ul>
+                                            </li>
+                                            <li>Jika hasil sudah sesuai, klik tombol hijau: <strong>"💾 Terapkan ke Jadwal Resmi"</strong>.</li>
+                                            <li>Jadwal otomatis langsung aktif di Jurnal Mengajar Guru, Presensi Siswa, dan siap dicetak ke format PDF Matriks (Kelas, Guru, Lab)!</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Footer Controls */}
+                        <div className="p-4 sm:p-5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-between">
+                            <button
+                                type="button"
+                                disabled={tutorialStep === 1}
+                                onClick={() => setTutorialStep(prev => Math.max(1, prev - 1))}
+                                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200/60 dark:hover:bg-slate-800 disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer"
+                            >
+                                <ChevronLeftIcon className="w-4 h-4" />
+                                Sebelumnya
+                            </button>
+
+                            <div className="text-xs font-semibold text-slate-500">
+                                Langkah <span className="font-extrabold text-indigo-600 dark:text-indigo-400">{tutorialStep}</span> dari 6
+                            </div>
+
+                            {tutorialStep < 6 ? (
+                                <button
+                                    type="button"
+                                    onClick={() => setTutorialStep(prev => Math.min(6, prev + 1))}
+                                    className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm transition active:scale-95 cursor-pointer"
+                                >
+                                    Selanjutnya
+                                    <ChevronRightIcon className="w-4 h-4" />
+                                </button>
+                            ) : (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setShowTutorialModal(false);
+                                        setActiveTab('generator');
+                                    }}
+                                    className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition active:scale-95 cursor-pointer"
+                                >
+                                    <CheckCircleIcon className="w-4 h-4" />
+                                    Selesai & Mulai Generate
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
