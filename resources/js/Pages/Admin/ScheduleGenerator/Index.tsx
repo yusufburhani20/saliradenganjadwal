@@ -50,6 +50,7 @@ interface TeachingAssignment {
     total_hours: number;
     max_hours_per_day: number;
     allowed_days?: string[] | null;
+    room?: string | null;
     academic_class?: AcademicClass;
     subject?: Subject;
     teacher?: Teacher;
@@ -89,6 +90,7 @@ interface GeneratedScheduleItem {
     teacher_name: string;
     subject: string;
     subject_id: number;
+    room?: string | null;
     day: string;
     start_time: string;
     end_time: string;
@@ -106,6 +108,7 @@ interface Props extends PageProps {
     teachers: Teacher[];
     subjects: Subject[];
     lesson_hours: LessonHoursMap;
+    labs?: string[];
 }
 
 const DAY_OPTIONS = [
@@ -138,6 +141,7 @@ export default function ScheduleGeneratorIndex({
     teachers,
     subjects,
     lesson_hours,
+    labs = [],
 }: Props) {
     const [activeTab, setActiveTab] = useState<'assignments' | 'unavailabilities' | 'generator'>('generator');
 
@@ -169,8 +173,8 @@ export default function ScheduleGeneratorIndex({
     } | null>(null);
 
     // Grid View Filter in Generator Tab
-    const [viewMode, setViewMode] = useState<'class' | 'teacher'>('class');
-    const [selectedViewTarget, setSelectedViewTarget] = useState<number | 'all'>('all');
+    const [viewMode, setViewMode] = useState<'class' | 'teacher' | 'room'>('class');
+    const [selectedViewTarget, setSelectedViewTarget] = useState<number | string | 'all'>('all');
     const [isApplying, setIsApplying] = useState(false);
 
     // Assignment Form
@@ -181,6 +185,7 @@ export default function ScheduleGeneratorIndex({
         total_hours: 2,
         max_hours_per_day: 2,
         allowed_days: [] as string[],
+        room: '',
     });
 
     // Batch Assign Form (Atur Guru Per Mapel Sekaligus)
@@ -229,6 +234,7 @@ export default function ScheduleGeneratorIndex({
             total_hours: assignment.total_hours,
             max_hours_per_day: assignment.max_hours_per_day,
             allowed_days: assignment.allowed_days || [],
+            room: assignment.room || '',
         });
         setShowAssignmentModal(true);
     };
@@ -241,6 +247,7 @@ export default function ScheduleGeneratorIndex({
             total_hours: assignment.total_hours,
             max_hours_per_day: assignment.max_hours_per_day,
             allowed_days: assignment.allowed_days || [],
+            room: assignment.room || null,
         }, {
             preserveScroll: true,
         });
@@ -585,13 +592,24 @@ export default function ScheduleGeneratorIndex({
 
     const totalJP = assignments.reduce((acc, curr) => acc + curr.total_hours, 0);
 
+    const availableLabList = Array.from(new Set([
+        ...(labs || []),
+        'LAB 1',
+        'LAB 2',
+        'LAB TI',
+        ...assignments.map((a) => a.room).filter(Boolean),
+        ...(generationResult?.schedules || []).map((s) => s.room).filter(Boolean),
+    ])).filter(Boolean) as string[];
+
     // Filter generated items for matrix
     const visibleGeneratedSchedules = (generationResult?.schedules || []).filter((item) => {
         if (selectedViewTarget === 'all') return true;
         if (viewMode === 'class') {
-            return item.class_id === selectedViewTarget;
+            return item.class_id === Number(selectedViewTarget);
+        } else if (viewMode === 'teacher') {
+            return item.teacher_id === Number(selectedViewTarget);
         } else {
-            return item.teacher_id === selectedViewTarget;
+            return (item.room || 'Tanpa Lab') === selectedViewTarget;
         }
     });
 
@@ -845,23 +863,42 @@ export default function ScheduleGeneratorIndex({
                                             >
                                                 Tampilan Per Guru
                                             </button>
+                                            <button
+                                                onClick={() => {
+                                                    setViewMode('room');
+                                                    if (availableLabList[0]) setSelectedViewTarget(availableLabList[0]);
+                                                }}
+                                                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition ${
+                                                    viewMode === 'room'
+                                                        ? 'bg-white dark:bg-slate-700 text-purple-600 dark:text-purple-400 shadow-sm'
+                                                        : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-100'
+                                                }`}
+                                            >
+                                                Tampilan Per Lab/Ruang
+                                            </button>
                                         </div>
 
                                         <select
                                             value={selectedViewTarget}
-                                            onChange={(e) => setSelectedViewTarget(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+                                            onChange={(e) => setSelectedViewTarget(e.target.value === 'all' ? 'all' : (viewMode === 'room' ? e.target.value : Number(e.target.value)))}
                                             className="text-xs font-semibold rounded-xl border-slate-200 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-200 py-1.5 px-3 focus:ring-indigo-500"
                                         >
-                                            <option value="all">Semua {viewMode === 'class' ? 'Kelas' : 'Guru'}</option>
+                                            <option value="all">Semua {viewMode === 'class' ? 'Kelas' : viewMode === 'teacher' ? 'Guru' : 'Ruangan/Lab'}</option>
                                             {viewMode === 'class'
                                                 ? classes.map((c) => (
                                                       <option key={c.id} value={c.id}>
                                                           {c.name}
                                                       </option>
                                                   ))
-                                                : teachers.map((t) => (
+                                                : viewMode === 'teacher'
+                                                ? teachers.map((t) => (
                                                       <option key={t.id} value={t.id}>
                                                           {t.name}
+                                                      </option>
+                                                  ))
+                                                : availableLabList.map((lab) => (
+                                                      <option key={lab} value={lab}>
+                                                          {lab}
                                                       </option>
                                                   ))}
                                         </select>
@@ -909,13 +946,20 @@ export default function ScheduleGeneratorIndex({
                                                                                 </span>
                                                                             </div>
                                                                             <p className="font-bold text-xs leading-tight line-clamp-1">{item.subject}</p>
-                                                                            <p className="text-[11px] mt-1 opacity-90 truncate">
+                                                                            <div className="flex items-center justify-between text-[11px] mt-1 opacity-90 truncate">
                                                                                 {viewMode === 'class' ? (
                                                                                     <span>👤 {item.teacher_name}</span>
-                                                                                ) : (
+                                                                                ) : viewMode === 'teacher' ? (
                                                                                     <span>🏫 {item.class_name}</span>
+                                                                                ) : (
+                                                                                    <span>🏫 {item.class_name} • 👤 {item.teacher_name}</span>
                                                                                 )}
-                                                                            </p>
+                                                                                {item.room && (
+                                                                                    <span className="ml-1 px-1.5 py-0.2 rounded font-bold text-[9px] bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300">
+                                                                                        {item.room}
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
                                                                         </div>
                                                                     );
                                                                 })
@@ -1077,6 +1121,13 @@ export default function ScheduleGeneratorIndex({
                                                         <div className="mt-1">
                                                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200/50 dark:border-amber-800/50">
                                                                 📅 Hanya: {a.allowed_days.map(d => DAY_OPTIONS.find(x => x.value === d)?.label || d).join(', ')}
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                    {a.room && (
+                                                        <div className="mt-1">
+                                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 border border-purple-200/50 dark:border-purple-800/50">
+                                                                🏢 Lab: {a.room}
                                                             </span>
                                                         </div>
                                                     )}
@@ -1331,6 +1382,27 @@ export default function ScheduleGeneratorIndex({
                                         </option>
                                     ))}
                                 </select>
+                            </div>
+
+                            <div>
+                                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                    Ruangan / Lab Khusus (Opsional)
+                                </label>
+                                <select
+                                    value={assignmentForm.data.room || ''}
+                                    onChange={(e) => assignmentForm.setData('room', e.target.value)}
+                                    className="w-full rounded-xl border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 py-2"
+                                >
+                                    <option value="">Ruang Kelas Standar (Tanpa Lab)</option>
+                                    {availableLabList.map((lab) => (
+                                        <option key={lab} value={lab}>
+                                            🏢 {lab}
+                                        </option>
+                                    ))}
+                                </select>
+                                <p className="text-[10px] text-slate-400 mt-1">
+                                    Pilih Lab jika mapel ini wajib di Lab Komputer agar sistem otomatis mencegah bentrok ruangan antar kelas
+                                </p>
                             </div>
 
                             <div className="grid grid-cols-2 gap-3">

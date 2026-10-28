@@ -69,6 +69,18 @@ class AscTimetableImporterService
             $xmlSubjectCodes[(string)$s['id']] = (string)$s['short'];
         }
 
+        $xmlClassrooms = [];
+        if (isset($xml->classrooms->classroom)) {
+            foreach ($xml->classrooms->classroom as $cr) {
+                $crId = (string)$cr['id'];
+                $crName = trim((string)$cr['name']);
+                $xmlClassrooms[$crId] = $crName;
+                if (stripos($crName, 'lab') !== false) {
+                    \App\Models\ComputerLab::firstOrCreate(['name' => $crName]);
+                }
+            }
+        }
+
         $xmlPeriods = [];
         foreach ($xml->periods->period as $p) {
             $pid = (string)$p['period'];
@@ -244,6 +256,8 @@ class AscTimetableImporterService
 
         // 9. Hitung Total JP dan Simpan Alokasi SKBM
         $assignmentHours = [];
+        $assignmentRooms = [];
+        $assignmentDailyCounts = [];
         $cardsByGroup = [];
         $targetClassDbIds = array_map(fn($c) => $c->id, $classDbMap);
 
@@ -260,11 +274,16 @@ class AscTimetableImporterService
             $tids = array_filter(explode(',', (string)$l['teacherids']));
             $subXmlId = (string)$l['subjectid'];
 
+            $crIds = array_filter(explode(',', (string)$l['classroomids']));
+            $lessonRoom = !empty($crIds) && isset($xmlClassrooms[$crIds[0]]) ? $xmlClassrooms[$crIds[0]] : null;
+
             foreach ($cids as $xmlCid) {
                 if (!isset($classDbMap[$xmlCid])) continue;
                 $dbClass = $classDbMap[$xmlCid];
                 $dbSubject = $subjectDbMap[$subXmlId] ?? null;
                 if (!$dbSubject) continue;
+
+                $effectiveRoom = $lessonRoom ?: self::inferLabRoom($dbClass->name, $dbSubject->name);
 
                 foreach ($tids as $xmlTid) {
                     $dbTeacher = $teacherDbMap[$xmlTid] ?? null;
@@ -272,8 +291,13 @@ class AscTimetableImporterService
 
                     $key = "{$dbClass->id}_{$dbSubject->id}_{$dbTeacher->id}";
                     $assignmentHours[$key] = ($assignmentHours[$key] ?? 0) + 1;
+                    $assignmentDailyCounts[$key][$dayName] = ($assignmentDailyCounts[$key][$dayName] ?? 0) + 1;
+                    if (!empty($effectiveRoom)) {
+                        $assignmentRooms[$key] = $effectiveRoom;
+                    }
 
-                    $groupKey = "{$dbClass->id}_{$dbSubject->name}_{$dbTeacher->id}_{$dayName}";
+                    $roomTag = !empty($effectiveRoom) ? $effectiveRoom : 'NOROOM';
+                    $groupKey = "{$dbClass->id}_{$dbSubject->name}_{$dbTeacher->id}_{$dayName}_{$roomTag}";
                     $cardsByGroup[$groupKey][] = $period;
                 }
             }
@@ -283,6 +307,9 @@ class AscTimetableImporterService
         foreach ($assignmentHours as $key => $hours) {
             [$classId, $subjectId, $teacherId] = explode('_', $key);
 
+            $maxBlockInAsc = !empty($assignmentDailyCounts[$key]) ? max($assignmentDailyCounts[$key]) : min(3, $hours);
+            $effectiveMaxDaily = max(1, min(5, $maxBlockInAsc));
+
             TeachingAssignment::updateOrCreate(
                 [
                     'academic_class_id' => $classId,
@@ -291,7 +318,8 @@ class AscTimetableImporterService
                 [
                     'teacher_id' => $teacherId,
                     'total_hours' => $hours,
-                    'max_hours_per_day' => min(3, $hours),
+                    'max_hours_per_day' => $effectiveMaxDaily,
+                    'room' => $assignmentRooms[$key] ?? null,
                 ]
             );
 
@@ -308,7 +336,8 @@ class AscTimetableImporterService
             Schedule::whereIn('class_id', $targetClassDbIds)->delete();
 
             foreach ($cardsByGroup as $groupKey => $periods) {
-                [$classId, $subjectName, $teacherId, $dayName] = explode('_', $groupKey, 4);
+                [$classId, $subjectName, $teacherId, $dayName, $roomTag] = array_pad(explode('_', $groupKey, 5), 5, 'NOROOM');
+                $actualRoom = ($roomTag === 'NOROOM') ? null : $roomTag;
                 sort($periods);
 
                 $chunks = [];
@@ -334,6 +363,7 @@ class AscTimetableImporterService
                         'class_id' => $classId,
                         'teacher_id' => $teacherId,
                         'subject' => $subjectName,
+                        'room' => $actualRoom,
                         'day' => $dayName,
                         'start_time' => $startTime,
                         'end_time' => $endTime,
@@ -372,5 +402,91 @@ class AscTimetableImporterService
                 'schedules_count' => $scheduleCount,
             ]
         ];
+    }
+
+    /**
+     * Helper untuk memetakan nama Lab berdasarkan kelas dan mata pelajaran
+     */
+    public static function inferLabRoom(?string $className, ?string $subjectName): ?string
+    {
+        if (empty($subjectName)) return null;
+
+        $normClass = trim(str_replace([' PA', ' PI'], '', (string)$className));
+        if (str_starts_with($normClass, 'XII ')) {
+            $normClass = 'VI ' . substr($normClass, 4);
+        } elseif (str_starts_with($normClass, 'XI ')) {
+            $normClass = 'V ' . substr($normClass, 3);
+        } elseif (str_starts_with($normClass, 'X ')) {
+            $normClass = 'IV ' . substr($normClass, 2);
+        }
+
+        $exactMap = [
+            'VI ST|Informatika' => 'LAB 2',
+            'VI KR|Informatika' => 'LAB 2',
+            'VI SB|Informatika' => 'LAB 2',
+            'I BS|Informatika' => 'LAB 1',
+            'I TS 1|Informatika' => 'LAB 1',
+            'I KR|Informatika' => 'LAB 1',
+            'II BS 1|Informatika' => 'LAB 1',
+            'II BS 2|Informatika' => 'LAB 1',
+            'II TS|Informatika' => 'LAB 1',
+            'II KR 1|Informatika' => 'LAB 1',
+            'III BS 1|Informatika' => 'LAB 1',
+            'III TS|Informatika' => 'LAB 1',
+            'III KR|Informatika' => 'LAB 1',
+            'III BS 2|Informatika' => 'LAB 1',
+            'II KR 2|Informatika' => 'LAB 1',
+            'VI TJKT|Keamanan Jaringan' => 'LAB TI',
+            'IV AKL|Spreadsheet' => 'LAB 2',
+            'V AKL|Komputer Akuntansi' => 'LAB 2',
+            'VI AKL|Komputer Akuntansi' => 'LAB 2',
+            'IV TJKT|Informatika' => 'LAB 2',
+            'IV AKL|Informatika' => 'LAB 2',
+            'VI TJKT|Teknologi Jaringan Kabel dan Nirkabel' => 'LAB TI',
+            'V TJKT|Teknologi Jaringan Kabel dan Nirkabel' => 'LAB TI',
+            'IV TJKT|Pemrograman Web' => 'LAB 1',
+            'V TJKT|Pemrograman Web' => 'LAB 1',
+            'IV TJKT|Design Grafis' => 'LAB 1',
+            'V TJKT|Perencanaan dan Pengalamatan Jaringan' => 'LAB TI',
+            'VI TJKT|Perencanaan dan Pengalamatan Jaringan' => 'LAB TI',
+            'V TJKT|Keamanan Jaringan' => 'LAB TI',
+            'IV KR|Informatika' => 'LAB 2',
+            'IV SB|Informatika' => 'LAB 2',
+            'V KR|Informatika' => 'LAB 2',
+            'V SB|Informatika' => 'LAB 2',
+            'VI TJKT|Pemrograman Web' => 'LAB TI',
+            'IV TJKT|Sistem Komputer' => 'LAB TI',
+            'I TS 2|Informatika' => 'LAB 1',
+            'V AKL|Digital Marketing' => 'LAB 1',
+            'VI AKL|Digital Marketing' => 'LAB 1',
+            'IV TJKT|Jaringan Dasar' => 'LAB TI',
+            'VI KR|Riset dan Sosial Keagamaan' => 'LAB 2',
+            'V KR|Riset dan Sosial Keagamaan' => 'LAB 2',
+            'V TJKT|Administrasi Sistem Jaringan' => 'LAB TI',
+            'IV ST|Informatika' => 'LAB 1',
+            'V ST|Informatika' => 'LAB 1',
+            'VI TJKT|Administrasi Sistem Jaringan' => 'LAB TI',
+        ];
+
+        $key = trim((string)$className) . '|' . trim((string)$subjectName);
+        if (isset($exactMap[$key])) return $exactMap[$key];
+
+        $normKey = $normClass . '|' . trim((string)$subjectName);
+        if (isset($exactMap[$normKey])) return $exactMap[$normKey];
+
+        $subjMap = [
+            'Keamanan Jaringan' => 'LAB TI',
+            'Teknologi Jaringan Kabel dan Nirkabel' => 'LAB TI',
+            'Perencanaan dan Pengalamatan Jaringan' => 'LAB TI',
+            'Administrasi Sistem Jaringan' => 'LAB TI',
+            'Jaringan Dasar' => 'LAB TI',
+            'Sistem Komputer' => 'LAB TI',
+            'Spreadsheet' => 'LAB 2',
+            'Komputer Akuntansi' => 'LAB 2',
+            'Digital Marketing' => 'LAB 1',
+            'Design Grafis' => 'LAB 1',
+        ];
+
+        return $subjMap[trim((string)$subjectName)] ?? null;
     }
 }

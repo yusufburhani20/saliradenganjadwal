@@ -35,6 +35,7 @@ interface Schedule {
     class_id: number;
     teacher_id: number;
     subject: string;
+    room?: string | null;
     day: string;
     start_time: string;
     end_time: string;
@@ -98,12 +99,14 @@ export default function ScheduleIndex({
     classes,
     teachers,
     school_name,
+    labs = [],
 }: PageProps<{
     schedules: Schedule[];
     classes: AcademicClass[];
     teachers: Teacher[];
     lesson_hours?: Record<string, Array<{ slot: number; start: string; end: string }>>;
     school_name?: string;
+    labs?: string[];
 }>) {
     const [isModalOpen, setIsModalOpen]             = useState(false);
     const [editingSchedule, setEditingSchedule]     = useState<Schedule | null>(null);
@@ -137,6 +140,7 @@ export default function ScheduleIndex({
         class_id:   '',
         teacher_id: '',
         subject:    '',
+        room:       '',
         day:        '',
         start_time: '',
         end_time:   '',
@@ -154,6 +158,7 @@ export default function ScheduleIndex({
             class_id:   String(schedule.class_id),
             teacher_id: String(schedule.teacher_id),
             subject:    schedule.subject,
+            room:       schedule.room || '',
             day:        schedule.day,
             start_time: formatTime(schedule.start_time),
             end_time:   formatTime(schedule.end_time),
@@ -534,7 +539,14 @@ export default function ScheduleIndex({
                                                             </span>
                                                         </td>
                                                         <td className="px-5 py-3.5 text-gray-800 dark:text-gray-200 font-semibold">
-                                                            {schedule.subject}
+                                                            <div className="flex items-center gap-2 flex-wrap">
+                                                                <span>{schedule.subject}</span>
+                                                                {schedule.room && (
+                                                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300">
+                                                                        🏢 {schedule.room}
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                         </td>
                                                         <td className="px-5 py-3.5 text-gray-600 dark:text-gray-400">
                                                             {schedule.teacher?.name ?? '-'}
@@ -1294,6 +1306,24 @@ export default function ScheduleIndex({
                                             className="w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:border-primary focus:ring-primary shadow-sm"
                                         />
                                         {errors.subject && <p className="text-red-500 text-xs mt-1">{errors.subject}</p>}
+                                    </div>
+
+                                    {/* Ruangan / Lab */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            Ruangan / Lab (Opsional)
+                                        </label>
+                                        <select
+                                            value={data.room}
+                                            onChange={e => setData('room', e.target.value)}
+                                            className="w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:border-primary focus:ring-primary shadow-sm"
+                                        >
+                                            <option value="">Ruang Kelas Biasa (Tanpa Lab)</option>
+                                            {Array.from(new Set([...(labs || []), 'LAB 1', 'LAB 2', 'LAB TI'])).map(lab => (
+                                                <option key={lab} value={lab}>🏢 {lab}</option>
+                                            ))}
+                                        </select>
+                                        {errors.room && <p className="text-red-500 text-xs mt-1">{errors.room}</p>}
                                     </div>
 
                                     {/* Guru */}

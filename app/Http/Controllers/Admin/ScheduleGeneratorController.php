@@ -41,6 +41,7 @@ class ScheduleGeneratorController extends Controller
             ->get(['id', 'name']);
         $subjects = Subject::orderBy('name')->get(['id', 'name', 'code']);
         $lessonHours = json_decode(Setting::get('lesson_hours_by_day', '{}'), true) ?: [];
+        $labs = \App\Models\ComputerLab::orderBy('name')->pluck('name');
 
         return Inertia::render('Admin/ScheduleGenerator/Index', [
             'assignments' => $assignments,
@@ -50,6 +51,7 @@ class ScheduleGeneratorController extends Controller
             'teachers' => $teachers,
             'subjects' => $subjects,
             'lesson_hours' => $lessonHours,
+            'labs' => $labs,
         ]);
     }
 
@@ -62,6 +64,7 @@ class ScheduleGeneratorController extends Controller
             'total_hours' => 'required|integer|min:1|max:20',
             'max_hours_per_day' => 'required|integer|min:1|max:6',
             'allowed_days' => 'nullable|array',
+            'room' => 'nullable|string|max:50',
         ], [
             'academic_class_id.required' => 'Kelas wajib dipilih.',
             'subject_id.required' => 'Mata pelajaran wajib dipilih.',
@@ -80,6 +83,7 @@ class ScheduleGeneratorController extends Controller
                 'total_hours' => $request->total_hours,
                 'max_hours_per_day' => $request->max_hours_per_day,
                 'allowed_days' => $request->input('allowed_days') ?: null,
+                'room' => $request->input('room') ?: null,
             ]
         );
 

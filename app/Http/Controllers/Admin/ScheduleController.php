@@ -25,6 +25,7 @@ class ScheduleController extends Controller
             ->get(['id', 'name']);
         $lessonHours = json_decode(Setting::get('lesson_hours_by_day', '{}'), true) ?: [];
         $schoolName = Setting::get('school_name', 'SIM Salira');
+        $labs = \App\Models\ComputerLab::orderBy('name')->pluck('name');
 
         return Inertia::render('Admin/Schedules/Index', [
             'schedules'    => $schedules,
@@ -32,6 +33,7 @@ class ScheduleController extends Controller
             'teachers'     => $teachers,
             'lesson_hours' => $lessonHours,
             'school_name'  => $schoolName,
+            'labs'         => $labs,
         ]);
     }
 
@@ -41,6 +43,7 @@ class ScheduleController extends Controller
             'class_id'   => 'required|exists:academic_classes,id',
             'teacher_id' => 'required|exists:users,id',
             'subject'    => 'required|string|max:255',
+            'room'       => 'nullable|string|max:50',
             'day'        => 'required|in:monday,tuesday,wednesday,thursday,friday,saturday,sunday',
             'start_time' => 'required|date_format:H:i',
             'end_time'   => 'required|date_format:H:i|after:start_time',
@@ -58,6 +61,7 @@ class ScheduleController extends Controller
             'class_id'   => $request->class_id,
             'teacher_id' => $request->teacher_id,
             'subject'    => $request->subject,
+            'room'       => $request->input('room') ?: null,
             'day'        => $request->day,
             'start_time' => $request->start_time . ':00',
             'end_time'   => $request->end_time . ':00',
@@ -72,6 +76,7 @@ class ScheduleController extends Controller
             'class_id'   => 'required|exists:academic_classes,id',
             'teacher_id' => 'required|exists:users,id',
             'subject'    => 'required|string|max:255',
+            'room'       => 'nullable|string|max:50',
             'day'        => 'required|in:monday,tuesday,wednesday,thursday,friday,saturday,sunday',
             'start_time' => 'required|date_format:H:i',
             'end_time'   => 'required|date_format:H:i|after:start_time',
@@ -83,6 +88,7 @@ class ScheduleController extends Controller
             'class_id'   => $request->class_id,
             'teacher_id' => $request->teacher_id,
             'subject'    => $request->subject,
+            'room'       => $request->input('room') ?: null,
             'day'        => $request->day,
             'start_time' => $request->start_time . ':00',
             'end_time'   => $request->end_time . ':00',

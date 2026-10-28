@@ -370,7 +370,9 @@ class SchedulePdfExportController extends Controller
         $printedAt = $common['printedAt'];
         $validDate = $request->input('valid_date');
 
-        $availableLabs = ['LAB 1', 'LAB 2', 'LAB TI'];
+        $dbLabs = \App\Models\ComputerLab::pluck('name')->toArray();
+        $availableLabs = array_values(array_unique(array_merge(['LAB 1', 'LAB 2', 'LAB TI'], $dbLabs)));
+
         if ($request->filled('lab') && in_array($request->lab, $availableLabs)) {
             $labs = [$request->lab];
         } else {
@@ -385,7 +387,7 @@ class SchedulePdfExportController extends Controller
                 $daySchedules = $allSchedules->filter(function ($s) use ($day, $labName) {
                     if (!$this->matchDay($s->day, $day)) return false;
                     $className = $s->academicClass->name ?? '';
-                    $room = $this->getRoom($className, $s->subject);
+                    $room = $s->room ?: $this->getRoom($className, $s->subject);
                     return $room === $labName;
                 });
 

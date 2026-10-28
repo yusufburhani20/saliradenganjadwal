@@ -16,6 +16,7 @@ class TeachingAssignment extends Model
         'total_hours',
         'max_hours_per_day',
         'allowed_days',
+        'room',
     ];
 
     protected $casts = [

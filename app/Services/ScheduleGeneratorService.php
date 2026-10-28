@@ -118,54 +118,105 @@ class ScheduleGeneratorService
         // 5a. Tahap 1: Greedy Best-Fit Pass (Sangat cepat dan andal untuk beban tinggi)
         $greedyClassGrid = [];
         $greedyTeacherGrid = [];
+        $greedyRoomGrid = [];
         $greedyPlaced = [];
 
+        $unplacedSessions = [];
+
         foreach ($sessions as $session) {
-            $candidateSlots = $this->getCandidateSlotsForSession($session, $greedyClassGrid, $greedyTeacherGrid);
+            $candidateSlots = $this->getCandidateSlotsForSession($session, $greedyClassGrid, $greedyTeacherGrid, $greedyRoomGrid);
             if (!empty($candidateSlots)) {
                 $bestSlot = $candidateSlots[0];
-                $day = $bestSlot['day'];
-                $startSlot = $bestSlot['start_slot'];
-                $duration = $session['duration'];
-
-                for ($i = 0; $i < $duration; $i++) {
-                    $greedyClassGrid[$session['class_id']][$day][$startSlot + $i] = $session['id'];
-                    $greedyTeacherGrid[$session['teacher_id']][$day][$startSlot + $i] = $session['id'];
-                }
-
-                $greedyPlaced[] = [
-                    'session_id' => $session['id'],
-                    'class_id' => $session['class_id'],
-                    'class_name' => $session['class_name'],
-                    'teacher_id' => $session['teacher_id'],
-                    'teacher_name' => $session['teacher_name'],
-                    'subject_id' => $session['subject_id'],
-                    'subject_name' => $session['subject_name'],
-                    'day' => $day,
-                    'start_slot' => $startSlot,
-                    'end_slot' => $startSlot + $duration - 1,
-                    'duration' => $duration,
-                ];
+                $this->placeSessionInGrid(
+                    $session,
+                    $bestSlot['day'],
+                    $bestSlot['start_slot'],
+                    $greedyClassGrid,
+                    $greedyTeacherGrid,
+                    $greedyRoomGrid,
+                    $greedyPlaced
+                );
+            } else {
+                $unplacedSessions[] = $session;
             }
         }
 
-        // 5b. Tahap 2: Backtracking Solver
-        $classGrid = [];
-        $teacherGrid = [];
-        $placedSessions = [];
-        $steps = 0;
-        $bestPlaced = $greedyPlaced; // Gunakan greedy sebagai baseline awal
+        // 5b. Tahap 2: Ripple Swap (Local Search) untuk sesi yang terbentrok guru / slot
+        if (!empty($unplacedSessions)) {
+            $stillUnplaced = [];
+            foreach ($unplacedSessions as $session) {
+                $swapped = $this->attemptRippleSwap($session, $greedyClassGrid, $greedyTeacherGrid, $greedyRoomGrid, $greedyPlaced);
+                if (!$swapped) {
+                    $stillUnplaced[] = $session;
+                }
+            }
+            $unplacedSessions = $stillUnplaced;
+        }
 
+        // 5c. Tahap 3: Flexible Fallback Splitting untuk sesi > 1 JP yang belum tertempatkan
+        if (!empty($unplacedSessions)) {
+            $stillUnplaced = [];
+            foreach ($unplacedSessions as $session) {
+                if ($session['duration'] > 1) {
+                    $subCount = $session['duration'];
+                    $subSessions = [];
+                    for ($k = 0; $k < $subCount; $k++) {
+                        $sub = $session;
+                        $sub['id'] = $session['id'] . "_sub_" . $k;
+                        $sub['duration'] = 1;
+                        $subSessions[] = $sub;
+                    }
+
+                    $allPlaced = true;
+                    $tempPlaced = [];
+                    foreach ($subSessions as $sub) {
+                        $candidates = $this->getCandidateSlotsForSession($sub, $greedyClassGrid, $greedyTeacherGrid, $greedyRoomGrid);
+                        if (!empty($candidates)) {
+                            $bestSlot = $candidates[0];
+                            $this->placeSessionInGrid($sub, $bestSlot['day'], $bestSlot['start_slot'], $greedyClassGrid, $greedyTeacherGrid, $greedyRoomGrid, $greedyPlaced);
+                            $tempPlaced[] = $sub;
+                        } else {
+                            $allPlaced = false;
+                            break;
+                        }
+                    }
+
+                    if (!$allPlaced) {
+                        foreach ($tempPlaced as $sub) {
+                            $this->removeSessionFromGrid($sub['id'], $greedyClassGrid, $greedyTeacherGrid, $greedyRoomGrid, $greedyPlaced);
+                        }
+                        $stillUnplaced[] = $session;
+                    }
+                } else {
+                    $stillUnplaced[] = $session;
+                }
+            }
+            $unplacedSessions = $stillUnplaced;
+        }
+
+        // 5d. Tahap 4: Recursive Backtracking (jika masih diperlukan)
         if (count($greedyPlaced) === $totalSessions) {
             $finalPlaced = $greedyPlaced;
             $success = true;
             $steps = $totalSessions;
+        } elseif (empty($unplacedSessions)) {
+            $finalPlaced = $greedyPlaced;
+            $success = true;
+            $steps = count($greedyPlaced);
         } else {
+            $classGrid = [];
+            $teacherGrid = [];
+            $roomGrid = [];
+            $placedSessions = [];
+            $steps = 0;
+            $bestPlaced = $greedyPlaced;
+
             $success = $this->backtrack(
                 $sessions,
                 0,
                 $classGrid,
                 $teacherGrid,
+                $roomGrid,
                 $placedSessions,
                 $steps,
                 $maxAttempts,
@@ -175,10 +226,18 @@ class ScheduleGeneratorService
         }
 
         $unplaced = [];
-        $placedIds = array_column($finalPlaced, 'session_id');
+        $placedOriginalIds = [];
+        foreach ($finalPlaced as $p) {
+            $sid = (string) $p['session_id'];
+            if (str_contains($sid, '_sub_')) {
+                $placedOriginalIds[explode('_sub_', $sid)[0]] = true;
+            } else {
+                $placedOriginalIds[$sid] = true;
+            }
+        }
 
         foreach ($sessions as $s) {
-            if (!in_array($s['id'], $placedIds)) {
+            if (!isset($placedOriginalIds[(string)$s['id']])) {
                 $unplaced[] = [
                     'class_name' => $s['class_name'],
                     'subject_name' => $s['subject_name'],
@@ -188,28 +247,31 @@ class ScheduleGeneratorService
             }
         }
 
+        $placedCount = count($placedOriginalIds);
+        $success = empty($unplaced);
+
         // 6. Transformasi ke format objek Schedule (siap simpan atau preview)
         $formattedSchedules = $this->formatPlacedSchedules($finalPlaced);
 
-        $message = $success && empty($unplaced)
+        $message = $success
             ? 'Jadwal berhasil digenerate 100% tanpa bentrok!'
-            : 'Jadwal berhasil digenerate dengan penempatan maksimal (' . count($finalPlaced) . ' dari ' . $totalSessions . ' sesi).';
+            : 'Jadwal berhasil digenerate dengan penempatan maksimal (' . $placedCount . ' dari ' . $totalSessions . ' sesi).';
 
         if (!empty($capacityWarnings)) {
             $message .= ' Perhatian: ' . implode(' ', $capacityWarnings);
         }
 
         return [
-            'success' => $success && empty($unplaced),
+            'success' => $success,
             'message' => $message,
             'schedules' => $formattedSchedules,
-            'placed_count' => count($finalPlaced),
+            'placed_count' => $placedCount,
             'total_count' => $totalSessions,
             'unplaced' => $unplaced,
             'capacity_warnings' => $capacityWarnings,
             'stats' => [
                 'steps' => $steps,
-                'efficiency' => round((count($finalPlaced) / $totalSessions) * 100, 1) . '%',
+                'efficiency' => round(($placedCount / $totalSessions) * 100, 1) . '%',
             ],
         ];
     }
@@ -222,6 +284,7 @@ class ScheduleGeneratorService
         int $index,
         array &$classGrid,
         array &$teacherGrid,
+        array &$roomGrid,
         array &$placedSessions,
         int &$steps,
         int $maxAttempts,
@@ -242,7 +305,7 @@ class ScheduleGeneratorService
         }
 
         $session = $sessions[$index];
-        $candidateSlots = $this->getCandidateSlotsForSession($session, $classGrid, $teacherGrid);
+        $candidateSlots = $this->getCandidateSlotsForSession($session, $classGrid, $teacherGrid, $roomGrid);
 
         foreach ($candidateSlots as $slot) {
             $day = $slot['day'];
@@ -253,6 +316,9 @@ class ScheduleGeneratorService
             for ($i = 0; $i < $duration; $i++) {
                 $classGrid[$session['class_id']][$day][$startSlot + $i] = $session['id'];
                 $teacherGrid[$session['teacher_id']][$day][$startSlot + $i] = $session['id'];
+                if (!empty($session['room'])) {
+                    $roomGrid[$session['room']][$day][$startSlot + $i] = $session['id'];
+                }
             }
 
             $placedItem = [
@@ -263,6 +329,7 @@ class ScheduleGeneratorService
                 'teacher_name' => $session['teacher_name'],
                 'subject_id' => $session['subject_id'],
                 'subject_name' => $session['subject_name'],
+                'room' => $session['room'] ?? null,
                 'day' => $day,
                 'start_slot' => $startSlot,
                 'end_slot' => $startSlot + $duration - 1,
@@ -271,7 +338,7 @@ class ScheduleGeneratorService
 
             $placedSessions[] = $placedItem;
 
-            if ($this->backtrack($sessions, $index + 1, $classGrid, $teacherGrid, $placedSessions, $steps, $maxAttempts, $bestPlaced)) {
+            if ($this->backtrack($sessions, $index + 1, $classGrid, $teacherGrid, $roomGrid, $placedSessions, $steps, $maxAttempts, $bestPlaced)) {
                 return true;
             }
 
@@ -280,6 +347,9 @@ class ScheduleGeneratorService
             for ($i = 0; $i < $duration; $i++) {
                 unset($classGrid[$session['class_id']][$day][$startSlot + $i]);
                 unset($teacherGrid[$session['teacher_id']][$day][$startSlot + $i]);
+                if (!empty($session['room'])) {
+                    unset($roomGrid[$session['room']][$day][$startSlot + $i]);
+                }
             }
         }
 
@@ -289,7 +359,7 @@ class ScheduleGeneratorService
     /**
      * Cari semua slot valid untuk sebuah sesi di semua hari KBM
      */
-    protected function getCandidateSlotsForSession(array $session, array &$classGrid, array &$teacherGrid): array
+    protected function getCandidateSlotsForSession(array $session, array &$classGrid, array &$teacherGrid, array &$roomGrid = []): array
     {
         $validSlots = [];
         $duration = $session['duration'];
@@ -370,21 +440,61 @@ class ScheduleGeneratorService
                         $possible = false;
                         break;
                     }
+
+                    // 4. Bentrok Ruangan / Lab
+                    if (!empty($session['room']) && isset($roomGrid[$session['room']][$day][$curr])) {
+                        $possible = false;
+                        break;
+                    }
                 }
 
                 if ($possible) {
-                    // Beri bobot/skor: preferensi hari yang belum ada mapel ini
                     $score = 0;
+                    $end = $start + $duration - 1;
+
+                    // Beri bobot/skor: preferensi hari yang belum ada mapel ini
                     if (!isset($daysWithSameSubject[$day])) {
                         $score += 10;
                     }
                     // Jam pagi lebih diprioritaskan
                     $score += max(0, 10 - $start);
 
-                    // Bonus konsolidasi hari guru: prioritaskan hari yang memang sudah ada jadwal guru ini
+                    // ANTI-FRAGMENTATION HEURISTICS
+                    $classOccupied = $classGrid[$classId][$day] ?? [];
+
+                    // 1. Berada di awal hari (jam ke-1)
+                    if ($start === 0) {
+                        $score += 25;
+                    }
+
+                    // 2. Berada tepat di akhir hari (menutup slot terakhir)
+                    if ($end === ($slotCount - 1)) {
+                        $score += 25;
+                    }
+
+                    // 3. Menempel rapat dengan sesi pelajaran yang sudah ada di kelas (mencegah jam kosong)
+                    $hasLeftNeighbor = isset($classOccupied[$start - 1]);
+                    $hasRightNeighbor = isset($classOccupied[$end + 1]);
+                    if ($hasLeftNeighbor) $score += 35;
+                    if ($hasRightNeighbor) $score += 35;
+
+                    // 4. Penalti berat jika meninggalkan celah 1 JP terisolasi
+                    if ($start >= 2 && !isset($classOccupied[$start - 1]) && isset($classOccupied[$start - 2])) {
+                        $score -= 60; // Menyisakan 1 slot kosong terisolasi di ($start - 1)
+                    } elseif ($start === 1 && !isset($classOccupied[0])) {
+                        $score -= 60; // Menyisakan 1 slot kosong terisolasi di jam pertama
+                    }
+
+                    if (($end <= $slotCount - 3) && !isset($classOccupied[$end + 1]) && isset($classOccupied[$end + 2])) {
+                        $score -= 60; // Menyisakan 1 slot kosong terisolasi di ($end + 1)
+                    } elseif ($end === $slotCount - 2 && !isset($classOccupied[$slotCount - 1])) {
+                        $score -= 60; // Menyisakan 1 slot kosong terisolasi di jam terakhir
+                    }
+
+                    // 5. Bonus konsolidasi hari guru: prioritaskan hari yang memang sudah ada jadwal guru ini
                     // agar jadwal guru terkumpul dan tidak terpecah-pecah ke terlalu banyak hari
                     if (!empty($teacherGrid[$teacherId][$day])) {
-                        $score += 15;
+                        $score += 20;
                     }
 
                     $validSlots[] = [
@@ -471,6 +581,7 @@ class ScheduleGeneratorService
         foreach ($assignments as $a) {
             $remaining = (int) $a->total_hours;
             $maxPerDay = max(1, (int) ($a->max_hours_per_day ?: 2));
+            $room = $a->room ?: \App\Services\AscTimetableImporterService::inferLabRoom($a->academicClass->name ?? '', $a->subject->name ?? '');
 
             while ($remaining > 0) {
                 // Tentukan durasi blok pertemuan ini
@@ -486,6 +597,7 @@ class ScheduleGeneratorService
                     'teacher_name' => $a->teacher->name ?? "Guru #{$a->teacher_id}",
                     'subject_id' => $a->subject_id,
                     'subject_name' => $a->subject->name ?? "Mapel #{$a->subject_id}",
+                    'room' => $room,
                     'duration' => $dur,
                     'allowed_days' => $a->allowed_days ?: [],
                     'teacher_load' => $teacherTotalHours[$a->teacher_id] ?? 0,
@@ -522,6 +634,7 @@ class ScheduleGeneratorService
                 'teacher_name' => $item['teacher_name'],
                 'subject' => $item['subject_name'],
                 'subject_id' => $item['subject_id'],
+                'room' => $item['room'] ?? null,
                 'day' => $day,
                 'start_time' => $startTime,
                 'end_time' => $endTime,
@@ -558,6 +671,7 @@ class ScheduleGeneratorService
                     'class_id' => $item['class_id'],
                     'teacher_id' => $item['teacher_id'],
                     'subject' => $item['subject'],
+                    'room' => $item['room'] ?? null,
                     'day' => $item['day'],
                     'start_time' => (strlen($item['start_time']) === 5 ? $item['start_time'] . ':00' : $item['start_time']),
                     'end_time' => (strlen($item['end_time']) === 5 ? $item['end_time'] . ':00' : $item['end_time']),
@@ -567,5 +681,199 @@ class ScheduleGeneratorService
 
             return $insertedCount;
         });
+    }
+
+    /**
+     * Tempatkan sesi ke dalam grid kelas, guru, ruangan, dan daftar hasil
+     */
+    protected function placeSessionInGrid(
+        array $session,
+        string $day,
+        int $startSlot,
+        array &$classGrid,
+        array &$teacherGrid,
+        array &$roomGrid,
+        array &$placedSessions
+    ): void {
+        $duration = $session['duration'];
+        for ($i = 0; $i < $duration; $i++) {
+            $classGrid[$session['class_id']][$day][$startSlot + $i] = $session['id'];
+            $teacherGrid[$session['teacher_id']][$day][$startSlot + $i] = $session['id'];
+            if (!empty($session['room'])) {
+                $roomGrid[$session['room']][$day][$startSlot + $i] = $session['id'];
+            }
+        }
+
+        $placedSessions[] = [
+            'session_id' => $session['id'],
+            'class_id' => $session['class_id'],
+            'class_name' => $session['class_name'],
+            'teacher_id' => $session['teacher_id'],
+            'teacher_name' => $session['teacher_name'],
+            'subject_id' => $session['subject_id'],
+            'subject_name' => $session['subject_name'],
+            'room' => $session['room'] ?? null,
+            'day' => $day,
+            'start_slot' => $startSlot,
+            'end_slot' => $startSlot + $duration - 1,
+            'duration' => $duration,
+        ];
+    }
+
+    /**
+     * Hapus penempatan sesi dari grid
+     */
+    protected function removeSessionFromGrid(
+        int|string $sessionId,
+        array &$classGrid,
+        array &$teacherGrid,
+        array &$roomGrid,
+        array &$placedSessions
+    ): void {
+        foreach ($placedSessions as $k => $p) {
+            if ($p['session_id'] == $sessionId) {
+                $day = $p['day'];
+                $startSlot = $p['start_slot'];
+                $duration = $p['duration'];
+                for ($i = 0; $i < $duration; $i++) {
+                    unset($classGrid[$p['class_id']][$day][$startSlot + $i]);
+                    unset($teacherGrid[$p['teacher_id']][$day][$startSlot + $i]);
+                    if (!empty($p['room'])) {
+                        unset($roomGrid[$p['room']][$day][$startSlot + $i]);
+                    }
+                }
+                unset($placedSessions[$k]);
+                $placedSessions = array_values($placedSessions);
+                break;
+            }
+        }
+    }
+
+    /**
+     * Pergeseran cerdas 1-langkah (Ripple Swap) untuk membuka ruang bagi sesi yang belum tertempatkan
+     */
+    protected function attemptRippleSwap(
+        array $session,
+        array &$classGrid,
+        array &$teacherGrid,
+        array &$roomGrid,
+        array &$placedSessions
+    ): bool {
+        $classId = $session['class_id'];
+        $teacherId = $session['teacher_id'];
+        $duration = $session['duration'];
+
+        foreach ($this->lessonHoursByDay as $day => $slots) {
+            if (!empty($session['allowed_days']) && !in_array($day, $session['allowed_days'])) {
+                continue;
+            }
+
+            $slotCount = count($slots);
+            if ($slotCount < $duration) {
+                continue;
+            }
+
+            for ($start = 0; $start <= ($slotCount - $duration); $start++) {
+                // Cek apakah guru dan lab bebas pada rentang slot ini
+                $teacherAndRoomFree = true;
+                for ($o = 0; $o < $duration; $o++) {
+                    $curr = $start + $o;
+                    if (isset($teacherGrid[$teacherId][$day][$curr]) || $this->isTeacherUnavailable($teacherId, $day, $curr)) {
+                        $teacherAndRoomFree = false;
+                        break;
+                    }
+                    if (!empty($session['room']) && isset($roomGrid[$session['room']][$day][$curr])) {
+                        $teacherAndRoomFree = false;
+                        break;
+                    }
+                }
+                if (!$teacherAndRoomFree) {
+                    continue;
+                }
+
+                // Cek sesi mana saja di kelas ini yang sedang menempati rentang slot tersebut
+                $conflictingSessionIds = [];
+                for ($o = 0; $o < $duration; $o++) {
+                    $curr = $start + $o;
+                    if (isset($classGrid[$classId][$day][$curr])) {
+                        $conflictingSessionIds[$classGrid[$classId][$day][$curr]] = true;
+                    }
+                }
+
+                // Jika hanya ada 1 sesi yang menghalangi, coba pindahkan sesi penghalang tersebut
+                if (count($conflictingSessionIds) === 1) {
+                    $targetId = array_key_first($conflictingSessionIds);
+                    $targetPlaced = null;
+                    foreach ($placedSessions as $p) {
+                        if ($p['session_id'] == $targetId) {
+                            $targetPlaced = $p;
+                            break;
+                        }
+                    }
+
+                    if ($targetPlaced !== null) {
+                        $targetSession = [
+                            'id' => $targetPlaced['session_id'],
+                            'class_id' => $targetPlaced['class_id'],
+                            'class_name' => $targetPlaced['class_name'],
+                            'teacher_id' => $targetPlaced['teacher_id'],
+                            'teacher_name' => $targetPlaced['teacher_name'],
+                            'subject_id' => $targetPlaced['subject_id'],
+                            'subject_name' => $targetPlaced['subject_name'],
+                            'room' => $targetPlaced['room'],
+                            'duration' => $targetPlaced['duration'],
+                            'allowed_days' => [],
+                        ];
+
+                        // 1. Angkat sesi target sementara dari grid
+                        $this->removeSessionFromGrid($targetId, $classGrid, $teacherGrid, $roomGrid, $placedSessions);
+
+                        // 2. Tempatkan sesi baru ke slot yang telah dibebaskan terlebih dahulu
+                        // sehingga grid terlindungi dan sesi target tidak akan memilih slot yang sama
+                        $this->placeSessionInGrid(
+                            $session,
+                            $day,
+                            $start,
+                            $classGrid,
+                            $teacherGrid,
+                            $roomGrid,
+                            $placedSessions
+                        );
+
+                        // 3. Cari slot alternatif untuk sesi target
+                        $targetCandidates = $this->getCandidateSlotsForSession($targetSession, $classGrid, $teacherGrid, $roomGrid);
+
+                        if (!empty($targetCandidates)) {
+                            // Target menemukan slot alternatif yang aman dan bebas bentrok!
+                            $bestAlternative = reset($targetCandidates);
+                            $this->placeSessionInGrid(
+                                $targetSession,
+                                $bestAlternative['day'],
+                                $bestAlternative['start_slot'],
+                                $classGrid,
+                                $teacherGrid,
+                                $roomGrid,
+                                $placedSessions
+                            );
+                            return true;
+                        } else {
+                            // Rollback: batalkan penempatan sesi baru dan kembalikan target ke slot semula
+                            $this->removeSessionFromGrid($session['id'], $classGrid, $teacherGrid, $roomGrid, $placedSessions);
+                            $this->placeSessionInGrid(
+                                $targetSession,
+                                $targetPlaced['day'],
+                                $targetPlaced['start_slot'],
+                                $classGrid,
+                                $teacherGrid,
+                                $roomGrid,
+                                $placedSessions
+                            );
+                        }
+                    }
+                }
+            }
+        }
+
+        return false;
     }
 }
