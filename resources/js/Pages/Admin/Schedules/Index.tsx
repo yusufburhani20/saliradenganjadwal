@@ -417,79 +417,6 @@ export default function ScheduleIndex({
                                 <ChevronDownIcon className="w-3 h-3 opacity-80" />
                             </button>
 
-                            {/* Tombol Hapus Masal */}
-                            {schedules.length > 0 && (
-                                <div className="relative">
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsBulkMenuOpen(!isBulkMenuOpen)}
-                                        className="inline-flex items-center px-4 py-2.5 bg-rose-50 dark:bg-rose-950/30 hover:bg-rose-100 dark:hover:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 rounded-xl font-bold text-xs transition-all shadow-sm gap-2 cursor-pointer"
-                                        title="Opsi Hapus Masal Jadwal"
-                                    >
-                                        <TrashIcon className="w-4 h-4 text-rose-600 dark:text-rose-400" />
-                                        <span>Hapus Masal</span>
-                                        {selectedIds.length > 0 && (
-                                            <span className="px-1.5 py-0.5 rounded-full bg-rose-600 text-white text-[10px] font-extrabold animate-pulse">
-                                                {selectedIds.length}
-                                            </span>
-                                        )}
-                                        <ChevronDownIcon className="w-3 h-3 opacity-80" />
-                                    </button>
-
-                                    {isBulkMenuOpen && (
-                                        <>
-                                            <div
-                                                className="fixed inset-0 z-20"
-                                                onClick={() => setIsBulkMenuOpen(false)}
-                                            />
-                                            <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl z-30 p-2 space-y-1 text-xs">
-                                                <button
-                                                    type="button"
-                                                    disabled={selectedIds.length === 0}
-                                                    onClick={() => { setIsBulkMenuOpen(false); openBulkDeleteModal('selected'); }}
-                                                    className="w-full text-left px-3 py-2.5 rounded-xl flex items-center justify-between text-gray-700 dark:text-gray-200 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-700 disabled:opacity-40 disabled:pointer-events-none transition cursor-pointer"
-                                                >
-                                                    <div className="flex items-center gap-2">
-                                                        <TrashIcon className="w-4 h-4 text-rose-500" />
-                                                        <span>Hapus Jadwal Terpilih</span>
-                                                    </div>
-                                                    <span className="font-bold text-[11px] px-2 py-0.5 bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300 rounded-md">
-                                                        {selectedIds.length} dipilih
-                                                    </span>
-                                                </button>
-
-                                                {filterClass && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => { setIsBulkMenuOpen(false); openBulkDeleteModal('class'); }}
-                                                        className="w-full text-left px-3 py-2.5 rounded-xl flex items-center justify-between text-gray-700 dark:text-gray-200 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-700 transition cursor-pointer"
-                                                    >
-                                                        <div className="flex items-center gap-2">
-                                                            <AcademicCapIcon className="w-4 h-4 text-amber-500" />
-                                                            <span>Hapus Semua Kelas Ini</span>
-                                                        </div>
-                                                        <span className="font-bold text-[11px] text-slate-400">
-                                                            {classes.find(c => String(c.id) === filterClass)?.name}
-                                                        </span>
-                                                    </button>
-                                                )}
-
-                                                <div className="border-t border-gray-100 dark:border-gray-700 my-1" />
-
-                                                <button
-                                                    type="button"
-                                                    onClick={() => { setIsBulkMenuOpen(false); openBulkDeleteModal('all'); }}
-                                                    className="w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-2 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 font-bold transition cursor-pointer"
-                                                >
-                                                    <TrashIcon className="w-4 h-4 flex-shrink-0" />
-                                                    <span>Kosongkan Seluruh Jadwal ({schedules.length})</span>
-                                                </button>
-                                            </div>
-                                        </>
-                                    )}
-                                </div>
-                            )}
-
                             {/* Tambah Jadwal Button */}
                             <button
                                 onClick={openAddModal}
@@ -599,6 +526,83 @@ export default function ScheduleIndex({
                                 <option value="">Semua Guru</option>
                                 {teachers.map(t => <option key={t.id} value={String(t.id)}>{t.name}</option>)}
                             </select>
+
+                            {/* Tombol Hapus Masal Disimpan Tepat di Samping Filter Semua Guru */}
+                            {schedules.length > 0 && (
+                                <div className="relative">
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsBulkMenuOpen(!isBulkMenuOpen)}
+                                        className={`inline-flex items-center px-3.5 py-2 border rounded-xl font-bold text-xs transition-all shadow-xs gap-1.5 cursor-pointer ${
+                                            selectedIds.length > 0
+                                                ? 'bg-rose-600 hover:bg-rose-700 text-white border-rose-600 shadow-sm'
+                                                : 'bg-rose-50 dark:bg-rose-950/30 hover:bg-rose-100 dark:hover:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800'
+                                        }`}
+                                        title="Opsi Hapus Masal Jadwal"
+                                    >
+                                        <TrashIcon className="w-4 h-4 text-rose-600 dark:text-rose-400" />
+                                        <span>Hapus Masal</span>
+                                        {selectedIds.length > 0 && (
+                                            <span className="px-1.5 py-0.5 rounded-full bg-white text-rose-700 text-[10px] font-extrabold">
+                                                {selectedIds.length}
+                                            </span>
+                                        )}
+                                        <ChevronDownIcon className="w-3 h-3 opacity-80" />
+                                    </button>
+
+                                    {isBulkMenuOpen && (
+                                        <>
+                                            <div
+                                                className="fixed inset-0 z-20"
+                                                onClick={() => setIsBulkMenuOpen(false)}
+                                            />
+                                            <div className="absolute left-0 mt-2 w-72 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl z-30 p-2 space-y-1 text-xs">
+                                                <button
+                                                    type="button"
+                                                    disabled={selectedIds.length === 0}
+                                                    onClick={() => { setIsBulkMenuOpen(false); openBulkDeleteModal('selected'); }}
+                                                    className="w-full text-left px-3 py-2.5 rounded-xl flex items-center justify-between text-gray-700 dark:text-gray-200 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-700 disabled:opacity-40 disabled:pointer-events-none transition cursor-pointer"
+                                                >
+                                                    <div className="flex items-center gap-2">
+                                                        <TrashIcon className="w-4 h-4 text-rose-500" />
+                                                        <span>Hapus Jadwal Terpilih</span>
+                                                    </div>
+                                                    <span className="font-bold text-[11px] px-2 py-0.5 bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300 rounded-md">
+                                                        {selectedIds.length} dipilih
+                                                    </span>
+                                                </button>
+
+                                                {filterClass && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => { setIsBulkMenuOpen(false); openBulkDeleteModal('class'); }}
+                                                        className="w-full text-left px-3 py-2.5 rounded-xl flex items-center justify-between text-gray-700 dark:text-gray-200 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-700 transition cursor-pointer"
+                                                    >
+                                                        <div className="flex items-center gap-2">
+                                                            <AcademicCapIcon className="w-4 h-4 text-amber-500" />
+                                                            <span>Hapus Semua Kelas Ini</span>
+                                                        </div>
+                                                        <span className="font-bold text-[11px] text-slate-400">
+                                                            {classes.find(c => String(c.id) === filterClass)?.name}
+                                                        </span>
+                                                    </button>
+                                                )}
+
+                                                <div className="border-t border-gray-100 dark:border-gray-700 my-1" />
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() => { setIsBulkMenuOpen(false); openBulkDeleteModal('all'); }}
+                                                    className="w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-2 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 font-bold transition cursor-pointer"
+                                                >
+                                                    <TrashIcon className="w-4 h-4 flex-shrink-0" />
+                                                    <span>Kosongkan Seluruh Jadwal ({schedules.length})</span>
+                                                </button>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            )}
 
                             {(filterDay || filterClass || filterTeacher) && (
                                 <button
