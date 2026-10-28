@@ -946,7 +946,7 @@
     ]
   },
   "resources/js/Pages/Admin/ScheduleGenerator/Index.tsx": {
-    "file": "assets/Index-r_SR1Js9.js",
+    "file": "assets/Index-CdYBPuZ1.js",
     "name": "Index",
     "src": "resources/js/Pages/Admin/ScheduleGenerator/Index.tsx",
     "isDynamicEntry": true,
@@ -1810,7 +1810,7 @@
     ]
   },
   "resources/js/app.tsx": {
-    "file": "assets/app-CyZDQSZY.js",
+    "file": "assets/app-B9QDJXpp.js",
     "name": "app",
     "src": "resources/js/app.tsx",
     "isEntry": true,
@@ -1905,7 +1905,7 @@
       "resources/js/Pages/Welcome.tsx"
     ],
     "css": [
-      "assets/app-6erzF6bN.css"
+      "assets/app-Do9ggIN6.css"
     ]
   }
 }

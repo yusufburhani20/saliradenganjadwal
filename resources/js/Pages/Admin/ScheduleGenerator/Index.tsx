@@ -1691,7 +1691,7 @@ export default function ScheduleGeneratorIndex({
                         <div className="px-4 sm:px-6 pt-3 pb-2 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
                             <div className="flex items-center justify-between gap-1 overflow-x-auto pb-1 scrollbar-none">
                                 {[
-                                    { num: 1, title: '1. Jam & Hari' },
+                                    { num: 1, title: '1. Master Guru & Jam' },
                                     { num: 2, title: '2. Lab / Ruang' },
                                     { num: 3, title: '3. Alokasi SKBM' },
                                     { num: 4, title: '4. Batasan Guru' },
@@ -1730,25 +1730,52 @@ export default function ScheduleGeneratorIndex({
                             {tutorialStep === 1 && (
                                 <div className="space-y-3.5">
                                     <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-bold text-sm">
-                                        <ClockIcon className="w-5 h-5" />
-                                        <span>Langkah 1: Atur Hari Aktif & Jam Pelajaran Sekolah</span>
+                                        <UserGroupIcon className="w-5 h-5" />
+                                        <span>Langkah 1: Pastikan Data Guru, Kelas, Mapel & Jam Sekolah Siap</span>
                                     </div>
                                     <p>
-                                        Sebelum sistem bisa menempatkan jadwal, sistem harus mengetahui <strong>hari apa saja sekolah aktif</strong> dan <strong>jam berapa saja jam ke-1 sampai jam terakhir</strong>.
+                                        Sebelum sistem bisa menyusun jadwal otomatis, pastikan pondasi data pokok sekolah sudah lengkap dan aktif di sistem:
                                     </p>
-                                    <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2">
-                                        <div className="font-semibold text-slate-800 dark:text-slate-200">Cara Pengaturannya:</div>
-                                        <ol className="list-decimal list-inside space-y-1.5 text-slate-600 dark:text-slate-400">
-                                            <li>Buka menu <strong>Pengaturan Jam Pelajaran</strong> (di sidebar navigasi sebelah kiri bawah).</li>
-                                            <li>Centang hari-hari operasional KBM (misal: <strong>Sabtu, Ahad, Senin, Selasa, Rabu, Kamis</strong>). Kosongkan hari Jumat jika libur pondok/sekolah.</li>
-                                            <li>Tentukan jam mulai & selesai per slot (misal: Jam ke-1: 07:30 - 08:10, hingga Jam ke-9: 14:25 - 15:00).</li>
-                                            <li>Klik <strong>Simpan Pengaturan Jam</strong>.</li>
-                                        </ol>
+                                    <div className="space-y-2.5">
+                                        <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2">
+                                            <div className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                                                <span className="w-5 h-5 rounded-lg bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 flex items-center justify-center text-xs font-bold">1</span>
+                                                <span>Data Guru / Tenaga Pendidik (PTK):</span>
+                                            </div>
+                                            <ul className="list-disc list-inside space-y-1 text-slate-600 dark:text-slate-400 pl-2">
+                                                <li>Buka menu <strong>Kepegawaian &gt; Data Guru / Pegawai</strong>.</li>
+                                                <li>Pastikan seluruh guru pengampu sudah terdaftar dengan status <strong>Aktif</strong>.</li>
+                                                <li>Jika data guru belum ada, sistem tidak akan bisa mengalokasikan siapa yang mengajar di kelas.</li>
+                                            </ul>
+                                        </div>
+
+                                        <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2">
+                                            <div className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                                                <span className="w-5 h-5 rounded-lg bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 flex items-center justify-center text-xs font-bold">2</span>
+                                                <span>Data Rombel (Kelas) &amp; Mata Pelajaran:</span>
+                                            </div>
+                                            <ul className="list-disc list-inside space-y-1 text-slate-600 dark:text-slate-400 pl-2">
+                                                <li>Pastikan daftar <strong>Kelas / Rombel</strong> (misal: <em>X RPL 1, XI TKJ 2, XII AKL</em>) sudah dibuat di menu <strong>Data Akademik &gt; Kelas</strong>.</li>
+                                                <li>Pastikan daftar <strong>Mata Pelajaran</strong> kurikulum sudah terdaftar di menu <strong>Data Akademik &gt; Mata Pelajaran</strong>.</li>
+                                            </ul>
+                                        </div>
+
+                                        <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2">
+                                            <div className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                                                <span className="w-5 h-5 rounded-lg bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 flex items-center justify-center text-xs font-bold">3</span>
+                                                <span>Hari Aktif &amp; Slot Jam Pelajaran (Time Slots):</span>
+                                            </div>
+                                            <ul className="list-disc list-inside space-y-1 text-slate-600 dark:text-slate-400 pl-2">
+                                                <li>Buka menu <strong>Pengaturan Jam Pelajaran</strong> (di sidebar navigasi kiri bawah).</li>
+                                                <li>Centang hari-hari operasional KBM (misal: <strong>Sabtu s/d Kamis</strong>, kosongkan Jumat jika libur).</li>
+                                                <li>Tentukan jam mulai &amp; selesai per slot (misal: Jam ke-1: 07:30 - 08:10 s/d Jam ke-9: 14:25 - 15:00).</li>
+                                            </ul>
+                                        </div>
                                     </div>
                                     <div className="p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-xl text-blue-800 dark:text-blue-300 text-[11px] flex gap-2">
                                         <InformationCircleIcon className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600 dark:text-blue-400" />
                                         <span>
-                                            <strong>Kapasitas Mingguan:</strong> Jumlah jam per hari (misal 9 JP x 6 hari = 54 JP per minggu) adalah batas maksimal jam belajar mingguan yang bisa ditampung tiap rombel kelas.
+                                            <strong>Kapasitas Jam Belajar:</strong> Jumlah hari aktif dikali jumlah jam per hari (misal 6 hari x 9 JP = 54 JP/minggu) adalah kuota slot maksimal yang tersedia untuk menampung alokasi belajar siswa.
                                         </span>
                                     </div>
                                 </div>
