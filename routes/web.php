@@ -75,6 +75,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/schedules', [\App\Http\Controllers\Admin\ScheduleController::class, 'index'])->name('schedules.index');
         Route::get('/schedules/export-pdf', [\App\Http\Controllers\Admin\SchedulePdfExportController::class, 'exportPdf'])->name('schedules.export-pdf');
         Route::post('/schedules', [\App\Http\Controllers\Admin\ScheduleController::class, 'store'])->name('schedules.store');
+        Route::delete('/schedules/bulk-delete', [\App\Http\Controllers\Admin\ScheduleController::class, 'bulkDestroy'])->name('schedules.bulk-destroy');
         Route::put('/schedules/{schedule}', [\App\Http\Controllers\Admin\ScheduleController::class, 'update'])->name('schedules.update');
         Route::delete('/schedules/{schedule}', [\App\Http\Controllers\Admin\ScheduleController::class, 'destroy'])->name('schedules.destroy');
 

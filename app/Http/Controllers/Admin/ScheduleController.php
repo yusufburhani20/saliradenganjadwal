@@ -102,4 +102,35 @@ class ScheduleController extends Controller
         $schedule->delete();
         return back()->with('success', 'Jadwal pelajaran berhasil dihapus.');
     }
+
+    public function bulkDestroy(Request $request)
+    {
+        // 1. Opsi Hapus Semua atau Hapus Per Kelas
+        if ($request->boolean('all')) {
+            $query = Schedule::query();
+            if ($request->filled('class_id')) {
+                $query->where('class_id', $request->class_id);
+                $count = $query->count();
+                $query->delete();
+                return back()->with('success', "Berhasil menghapus seluruh {$count} jadwal untuk kelas tersebut.");
+            }
+
+            $count = $query->count();
+            $query->delete();
+            return back()->with('success', "Seluruh {$count} jadwal pelajaran berhasil dikosongkan.");
+        }
+
+        // 2. Opsi Hapus Berdasarkan ID yang Dicentang
+        $validated = $request->validate([
+            'ids'   => 'required|array|min:1',
+            'ids.*' => 'exists:schedules,id',
+        ], [
+            'ids.required' => 'Pilih minimal satu jadwal untuk dihapus.',
+            'ids.min'      => 'Pilih minimal satu jadwal untuk dihapus.',
+        ]);
+
+        $count = Schedule::whereIn('id', $validated['ids'])->delete();
+
+        return back()->with('success', "Berhasil menghapus {$count} jadwal pelajaran terpilih.");
+    }
 }
